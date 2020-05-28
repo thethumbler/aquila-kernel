@@ -14,8 +14,6 @@ pub struct QueueNode<T> {
     pub value: T,
     pub prev: *mut QueueNode<T>,
     pub next: *mut QueueNode<T>,
-
-    _phantom: core::marker::PhantomData<T>,
 }
 
 unsafe impl<T> Sync for QueueNode<T> {}
@@ -26,8 +24,6 @@ pub struct Queue<T> {
     pub head: *mut QueueNode<T>,
     pub tail: *mut QueueNode<T>,
     pub flags: usize,
-
-    _phantom: core::marker::PhantomData<T>,
 }
 
 unsafe impl<T: Sync> Sync for Queue<T> {}
@@ -39,7 +35,6 @@ impl<T> Default for Queue<T> {
             head: core::ptr::null_mut(),
             tail: core::ptr::null_mut(),
             flags: 0,
-            _phantom: core::marker::PhantomData,
         }
     }
 }
@@ -75,7 +70,6 @@ impl<T: Copy> Queue<T> {
             head: core::ptr::null_mut(),
             tail: core::ptr::null_mut(),
             flags: 0,
-            _phantom: core::marker::PhantomData,
         }
     }
 
