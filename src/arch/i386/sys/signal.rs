@@ -1,13 +1,13 @@
 use prelude::*;
 
+use sys::process::*;
+
 use arch::i386::sys::sched::arch_sleep;
 use crate::arch::i386::include::cpu::cpu::X86Regs;
 use crate::arch::i386::include::core::arch::X86Thread;
 use crate::arch::i386::include::core::arch::X86_CS;
 use crate::arch::i386::include::core::arch::X86_SS;
 use crate::arch::i386::cpu::gdt::x86_kernel_stack_set;
-use crate::sys::proc::proc_kill;
-use crate::sys::proc::proc_exit;
 use crate::sys::signal::sig_default_action;
 use crate::sys::signal::SignalDefaultAction;
 use crate::sys::signal::SIG_DFL;

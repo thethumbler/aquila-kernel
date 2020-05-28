@@ -1,6 +1,10 @@
 use prelude::*;
 use fs::*;
 
+use sys::session::*;
+use sys::pgroup::*;
+use sys::process::*;
+
 use kern::string::*;
 use net::socket::*;
 use kern::time::*;
@@ -17,7 +21,6 @@ use crate::include::bits::mman::*;
 
 //use crate::include::sys::sched::*;
 use crate::sys::sched::*;
-use crate::sys::proc::*;
 use crate::sys::thread::*;
 use crate::sys::signal::*;
 use crate::sys::fork::*;
@@ -33,7 +36,6 @@ use crate::mm::*;
 
 use crate::include::net::socket::*;
 
-use crate::sys::proc::*;
 use crate::fs::mount::*;
 
 use crate::kern::print::*;

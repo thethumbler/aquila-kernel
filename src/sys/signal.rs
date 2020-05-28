@@ -1,9 +1,12 @@
 use prelude::*;
 
+use sys::session::*;
+use sys::pgroup::*;
+use sys::process::*;
+use sys::thread::*;
+
 use arch;
 
-use crate::sys::proc::*;
-use crate::sys::thread::*;
 use crate::include::bits::errno::*;
 use crate::include::core::types::*;
 

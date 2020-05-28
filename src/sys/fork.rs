@@ -1,5 +1,9 @@
 use prelude::*;
 
+use sys::session::*;
+use sys::pgroup::*;
+use sys::process::*;
+
 use arch::i386::sys::*;
 
 use kern::string::*;
@@ -11,7 +15,6 @@ use crate::include::bits::errno::*;
 use crate::include::fs::vfs::*;
 use crate::fs::{Vnode};
 
-use crate::sys::proc::*;
 use crate::sys::thread::*;
 
 use crate::mm::*;

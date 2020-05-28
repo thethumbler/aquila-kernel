@@ -1,5 +1,9 @@
 use prelude::*;
 
+use sys::process::*;
+use arch::i386::sys::proc::arch_proc_init;
+use arch::i386::sys::proc::arch_init_execve;
+
 use crate::kern::module::modules_init;
 use crate::dev::kdev::kdev_init;
 use crate::mm::vmm::kvm_space;
@@ -8,14 +12,10 @@ use crate::include::boot::boot::BootInfo;
 use crate::mm::vm_entry::VmEntry;
 use crate::fs::vfs::vfs_init;
 use crate::fs::initramfs::initramfs::load_ramdisk;
-use crate::arch::i386::sys::proc::arch_init_execve;
 use crate::sys::sched::sched_init_spawn;
-use crate::arch::i386::sys::proc::arch_proc_init;
 use crate::kern::print::cstr;
 use crate::sys::binfmt::binfmt::binfmt_load;
-use crate::sys::proc::proc_new;
 use crate::arch::i386::mm::i386::pmap_switch;
-use crate::sys::proc::Process;
 use crate::sys::thread::Thread;
 
 use crate::{print, curproc, curthread};

@@ -1,12 +1,13 @@
 use prelude::*;
 
+use sys::process::Process;
+
 use kern::string::*;
 use crate::include::mm::kvmem::*;
 use crate::include::fs::termios::*;
 use crate::include::bits::errno::*;
 use crate::dev::tty::tty::*;
 use crate::include::fs::ioctl::*;
-use crate::sys::proc::Process;
 use crate::include::core::types::*;
 use crate::sys::signal::*;
 use crate::{malloc_define, curproc, print};

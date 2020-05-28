@@ -1,12 +1,13 @@
 use prelude::*;
 
+use sys::process::Process;
+
 use arch::i386::mm::i386::*;
 use arch::i386::sys::execve::arch_sys_execve;
 use crate::arch::i386::include::core::arch::KERN_STACK_SIZE;
 use crate::arch::i386::include::core::arch::X86Thread;
 use crate::arch::i386::include::core::arch::X86_EFLAGS;
 use crate::sys::binfmt::binfmt::USER_STACK;
-use crate::sys::proc::Process;
 use crate::sys::thread::Thread;
 use crate::include::mm::kvmem::*;
 use crate::{curthread, malloc_declare};

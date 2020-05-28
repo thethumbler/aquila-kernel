@@ -1,5 +1,7 @@
 use prelude::*;
 
+use sys::process::*;
+
 use crate::include::bits::errno::*;
 
 use crate::include::mm::mm::*;
@@ -7,7 +9,6 @@ use crate::include::mm::vm::*;
 use crate::include::mm::kvmem::*;
 use crate::mm::*;
 
-use crate::sys::proc::*;
 use crate::include::fs::vfs::*;
 
 use crate::fs::*;

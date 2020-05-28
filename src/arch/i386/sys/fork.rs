@@ -1,7 +1,7 @@
 use prelude::*;
 
-use crate::sys::proc::*;
-use crate::sys::thread::*;
+use sys::process::*;
+use sys::thread::*;
 //use crate::arch::Arch;
 //use crate::mm::kvmem::*;
 //use crate::arch::*;

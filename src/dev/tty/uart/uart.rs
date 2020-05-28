@@ -1,5 +1,6 @@
 use prelude::*;
 
+use sys::process::Process;
 use dev::tty::generic::*;
 use crate::dev::dev::Device;
 use crate::fs::posix::read::posix_file_read;
@@ -15,7 +16,6 @@ use crate::fs::vnode::Vnode;
 use crate::kern::print::cstr;
 use crate::dev::tty::tty::Tty;
 use crate::dev::tty::tty::ttyio;
-use crate::sys::proc::Process;
 use crate::include::fs::vfs::__vfs_can_always;
 use crate::include::fs::vfs::__vfs_eof_never;
 

@@ -1,9 +1,11 @@
 use prelude::*;
 
+use sys::session::*;
+use sys::process::*;
+use sys::thread::*;
+
 use kern::string::*;
 use arch::i386::sys::*;
-use crate::sys::proc::*;
-use crate::sys::thread::*;
 use crate::include::core::arch::*;
 
 use crate::{print};

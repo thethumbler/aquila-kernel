@@ -1,5 +1,8 @@
 use prelude::*;
 
+use sys::session::*;
+use sys::pgroup::*;
+
 use arch::i386::platform::pc::reboot::arch_reboot;
 use arch::i386::sys::*;
 use arch::i386::mm::i386::*;
@@ -30,61 +33,7 @@ use crate::fs::{Vnode};
 use crate::{curthread, malloc_define, bitmap_new, print};
 
 malloc_define!(M_PROC, "proc\0", "process structure\0");
-malloc_define!(M_SESSION, "session\0", "session structure\0");
-malloc_define!(M_PGROUP, "pgroup\0", "process group structure\0");
 malloc_define!(M_FDS, "fds\0", "file descriptor array\0"); /* FIXME */
-
-
-/**
- * \ingroup sys
- * \brief session
- */
-#[repr(C)]
-pub struct Session {
-    /** session id */
-    pub sid: pid_t,
-
-    /** process groups */
-    pub pgps: Option<Box<Queue<*mut ProcessGroup>>>,
-
-    /** session leader */
-    pub leader: *mut Process,
-
-    /* controlling terminal */
-    pub ctty: *mut u8,
-
-    /** session node on sessions queue */
-    pub qnode: *mut QueueNode<*mut Session>,
-}
-
-unsafe impl Sync for Session {}
-
-/**
- * \ingroup sys
- * \brief process Group
- */
-#[repr(C)]
-pub struct ProcessGroup {
-    /** process group id */
-    pub pgid: pid_t,
-
-    /** associated session */
-    pub session: *mut Session,
-
-    /** session queue node */
-    pub session_node: *mut QueueNode<*mut ProcessGroup>,
-
-    /** processes */
-    pub procs: Option<Box<Queue<*mut Process>>>,
-
-    /** process group leader */
-    pub leader: *mut Process,
-
-    /** group node on pgroups queue */
-    pub qnode: *mut QueueNode<*mut ProcessGroup>,
-}
-
-unsafe impl Sync for ProcessGroup {}
 
 #[derive(Debug)]
 pub struct Process {
@@ -176,10 +125,6 @@ pub macro proc_uio {
 static mut procs_queue: Queue<*mut Process> = Queue::empty();
 pub static mut procs: *mut Queue<*mut Process> = unsafe { &mut procs_queue };
 
-/* all sessions */
-static mut sessions_queue: Queue<*mut Session> = Queue::empty();
-pub static mut sessions: *mut Queue<*mut Session> = unsafe { &mut sessions_queue };
-
 /* all process groups */
 static mut pgroups_queue: Queue<*mut ProcessGroup> = Queue::empty();
 pub static mut pgroups: *mut Queue<*mut ProcessGroup> = unsafe { &mut pgroups_queue };
@@ -258,6 +203,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
 
     return 0;
 }
+
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_pid_find(pid: pid_t) -> *mut Process {
@@ -431,119 +377,4 @@ pub unsafe extern "C" fn proc_fd_release(proc: *mut Process, fd: isize) {
     if (fd as usize) < FDS_COUNT {
         (*(*proc).fds.offset(fd)).backend.vnode = core::ptr::null_mut();
     }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn session_new(proc: *mut Process) -> isize {
-    let mut err = 0;
-
-    let mut session: *mut Session = core::ptr::null_mut();
-    let mut pgrp: *mut ProcessGroup = core::ptr::null_mut();
-
-    /* allocate a new session structure */
-    session = kmalloc(core::mem::size_of::<Session>(), &M_SESSION, M_ZERO) as *mut Session;
-    if session.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    /* allocate a new process group structure for the session */
-    pgrp = kmalloc(core::mem::size_of::<ProcessGroup>(), &M_PGROUP, M_ZERO) as *mut ProcessGroup;
-    if pgrp.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*session).pgps = Some(Queue::alloc());
-    if (*session).pgps.is_none() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*pgrp).procs = Some(Queue::alloc());
-    if (*pgrp).procs.is_none() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*pgrp).session_node = (*session).pgps.as_mut().unwrap().enqueue(pgrp);
-    if (*pgrp).session_node.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
-    if (*proc).pgrp_node.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*session).sid = (*proc).pid;
-    (*pgrp).pgid = (*proc).pid;
-
-    (*session).leader = proc;
-    (*pgrp).leader = proc;
-
-    (*pgrp).session = session;
-    (*proc).pgrp = pgrp;
-
-    return 0;
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut ProcessGroup) -> isize {
-    let mut err = 0;
-    let mut pgrp: *mut ProcessGroup = core::ptr::null_mut();
-    
-    pgrp = kmalloc(core::mem::size_of::<ProcessGroup>(), &M_PGROUP, M_ZERO) as *mut ProcessGroup;
-    if pgrp.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*pgrp).pgid = (*proc).pid;
-    (*pgrp).session = (*(*proc).pgrp).session;
-
-    /* remove the process from the old process group */
-    (*(*proc).pgrp).procs.as_mut().unwrap().node_remove((*proc).pgrp_node);
-
-    (*pgrp).procs = Some(Queue::alloc());
-    if (*pgrp).procs.is_none() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
-    if (*proc).pgrp_node.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    (*pgrp).session_node = (*(*(*proc).pgrp).session).pgps.as_mut().unwrap().enqueue(pgrp);
-    if (*pgrp).session_node.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
-
-    if (*(*proc).pgrp).procs.as_ref().unwrap().count == 0 {
-        /* TODO */
-    }
-
-    (*proc).pgrp = pgrp;
-
-    if !pgroup_ref.is_null() {
-        *pgroup_ref = pgrp;
-    }
-
-    return 0;
 }

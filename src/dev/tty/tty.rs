@@ -1,12 +1,12 @@
 use prelude::*;
 
+use sys::process::Process;
+use sys::pgroup::ProcessGroup;
 use dev::tty::uart::uart::uart;
 use dev::dev::*;
 use dev::kdev::*;
 
 use crate::include::core::module::*;
-use crate::sys::proc::Process;
-use crate::sys::proc::ProcessGroup;
 use crate::include::fs::termios::Termios;
 use crate::include::fs::ioctl::Winsize;
 use crate::{curproc};

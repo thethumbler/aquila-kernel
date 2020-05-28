@@ -1,12 +1,12 @@
 use prelude::*;
 
+use sys::process::*;
 use sys::binfmt::elf::*;
 
 use kern::string::*;
 use crate::include::core::types::*;
 use crate::include::bits::errno::*;
 
-use crate::sys::proc::*;
 use crate::sys::thread::*;
 
 use crate::include::mm::vm::*;
@@ -19,7 +19,6 @@ use crate::fs::vnode::*;
 
 use crate::{page_round, print};
 
-use crate::sys::proc::*;
 use crate::fs::*;
 
 /** binary format */

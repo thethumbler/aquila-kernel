@@ -1,11 +1,10 @@
 use prelude::*;
 
+use sys::process::*;
+use sys::sched::*;
+
 use arch::i386::sys::*;
 use core::fmt;
-use crate::sys::proc::*;
-use crate::sys::sched::*;
-use crate::include::mm::kvmem::*;
-use crate::include::core::types::*;
 
 use crate::{malloc_define, curthread};
 

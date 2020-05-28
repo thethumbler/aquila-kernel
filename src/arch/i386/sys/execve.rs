@@ -1,11 +1,12 @@
 use prelude::*;
 
+use sys::process::Process;
+
 use crate::include::mm::kvmem::*;
 use crate::sys::binfmt::binfmt::USER_STACK;
 use crate::arch::i386::include::core::arch::X86_EFLAGS;
 use crate::arch::i386::include::core::arch::X86Thread;
 use crate::sys::thread::Thread;
-use crate::sys::proc::Process;
 use crate::arch::i386::include::cpu::cpu::{read_cr3, write_cr3};
 use crate::{malloc_declare};
 
