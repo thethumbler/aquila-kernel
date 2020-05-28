@@ -121,6 +121,24 @@ pub macro proc_uio {
     }
 }
 
+impl Process {
+    pub fn new_thread(&mut self, thread_ref: *mut *mut Thread) -> isize {
+        // XXX
+        let mut thread = unsafe { Box::leak(Box::<Thread>::new_zeroed_tagged(&M_THREAD).assume_init()) };
+
+        thread.owner = self;
+        thread.tid = (self.threads.count() + 1) as tid_t;
+
+        unsafe { self.threads.enqueue(thread); }
+
+        if !thread_ref.is_null() {
+            unsafe { *thread_ref = thread; }
+        }
+
+        return 0;
+    }
+}
+
 /* all processes */
 pub static mut procs: Queue<*mut Process> = Queue::empty();
 
@@ -161,7 +179,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
         return -ENOMEM;
     }
 
-    err = thread_new(proc, &mut thread);
+    err = (*proc).new_thread(&mut thread);
 
     if err != 0 {
         kfree(proc as *mut u8);
@@ -268,8 +286,8 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 
     let mut kill_curthread = 0;
 
-    /* Kill all threads */
-    while (*proc).threads.count > 0 {
+    /* kill all threads */
+    while (*proc).threads.count() > 0 {
         let thread = (*proc).threads.dequeue().unwrap();
 
         if !(*thread).sleep_node.is_null() {
@@ -287,7 +305,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
             continue;
         }
 
-        thread_kill(thread);
+        (*thread).kill();
         kfree(thread as *mut u8);
     }
 
@@ -309,7 +327,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
     kfree((*proc).fds as *mut u8);
     kfree((*proc).cwd as *mut u8);
 
-    while (*proc).sig_queue.as_ref().unwrap().count > 0 {
+    while (*proc).sig_queue.as_ref().unwrap().count() > 0 {
         (*proc).sig_queue.as_mut().unwrap().dequeue();
     }
 

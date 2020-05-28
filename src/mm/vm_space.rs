@@ -82,23 +82,8 @@ impl AddressSpace {
             return -1;
         }
 
-        unsafe {
-            let node = kmalloc(core::mem::size_of::<QueueNode<*mut VmEntry>>(), &M_QNODE, M_ZERO) as *mut QueueNode<*mut VmEntry>;
-
-            (*node).value = vm_entry;
-            (*node).next  = cur;
-            (*node).prev  = (*cur).prev;
-
-            if !(*cur).prev.is_null() {
-                (*(*cur).prev).next = &mut *node;
-            }
-
-            (*cur).prev = &mut *node;
-            vm_entry.qnode = &mut *node;
-            (*queue).count += 1;
-
-            return 0;
-        }
+        vm_entry.qnode = queue.enqueue_before(cur, vm_entry);
+        return 0;
     }
 
     pub fn fork(&mut self, dst: &mut AddressSpace) -> isize {

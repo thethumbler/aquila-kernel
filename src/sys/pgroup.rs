@@ -68,7 +68,7 @@ pub unsafe fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut ProcessGroup) -
         return -ENOMEM;
     }
 
-    if (*(*proc).pgrp).procs.as_ref().unwrap().count == 0 {
+    if (*(*proc).pgrp).procs.as_ref().unwrap().count() == 0 {
         /* TODO */
     }
 

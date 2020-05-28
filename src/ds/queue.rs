@@ -22,7 +22,7 @@ unsafe impl<T> Sync for QueueNode<T> {}
 
 #[derive(Copy, Clone, Debug)]
 pub struct Queue<T> {
-    pub count: usize,
+    count: usize,
     pub head: *mut QueueNode<T>,
     pub tail: *mut QueueNode<T>,
     pub flags: usize,
@@ -83,6 +83,10 @@ impl<T: Copy> Queue<T> {
         Box::new_tagged(&M_QUEUE, Queue::empty())
     }
 
+    pub fn count(&self) -> usize {
+        self.count
+    }
+
     pub unsafe fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {
         let mut node = kmalloc(core::mem::size_of::<QueueNode<T>>(), &M_QNODE, M_ZERO) as *mut QueueNode<T>;
         if node.is_null() {
@@ -104,6 +108,33 @@ impl<T: Copy> Queue<T> {
         self.count += 1;
 
         return node;
+    }
+
+    pub fn enqueue_before(&mut self, qnode: *mut QueueNode<T>, value: T) -> *mut QueueNode<T> {
+        unsafe {
+            let mut node = kmalloc(core::mem::size_of::<QueueNode<T>>(), &M_QNODE, M_ZERO) as *mut QueueNode<T>;
+            if node.is_null() {
+                return core::ptr::null_mut();
+            }
+
+            (*node).prev  = (*qnode).prev;
+            (*node).next  = qnode;
+            (*node).value = value;
+
+            if !(*qnode).prev.is_null() {
+                (*(*qnode).prev).next = node;
+            }
+
+            (*qnode).prev = node;
+
+            if qnode == self.head {
+                self.head = node;
+            }
+
+            self.count += 1;
+
+            return node;
+        }
     }
 
     pub unsafe fn dequeue(&mut self) -> Option<T> {

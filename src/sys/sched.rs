@@ -10,8 +10,7 @@ use crate::include::core::arch::*;
 
 use crate::{print};
 
-static mut ready_queue_queue: Queue<*mut Thread> = Queue::empty();
-pub static mut ready_queue: *mut Queue<*mut Thread> = unsafe { &mut ready_queue_queue };
+pub static mut ready_queue: Queue<*mut Thread> = Queue::empty();
 
 pub static mut _curthread: *mut Thread = core::ptr::null_mut();
 
@@ -30,9 +29,9 @@ macro_rules! curproc {
 }
 
 pub unsafe fn sched_thread_ready(thread: *mut Thread) {
-    let sched_node = (*ready_queue).enqueue(thread);
+    let sched_node = ready_queue.enqueue(thread);
 
-    (*thread).sched_queue = ready_queue;
+    (*thread).sched_queue = &mut ready_queue;
     (*thread).sched_node  = sched_node;
 }
 
@@ -73,25 +72,18 @@ pub unsafe fn sched_init_spawn(init: *mut Process) {
 
 /* called from arch-specific timer event handler */
 pub unsafe fn schedule() {
-    if ready_queue.is_null() {
-        /* how did we even get here? */
-        panic!("threads queue is not initialized");
-    }
-
-    //print!("sched {:?}\n", *curthread!());
-
     if kidle == 0 {
         sched_thread_ready(curthread!());
     }
 
     kidle = 0;
 
-    if (*ready_queue).count == 0 {
-        /* No ready threads, idle */
+    if ready_queue.count() == 0 {
+        /* no ready threads, idle */
         kernel_idle();
     }
 
-    curthread!() = (*ready_queue).dequeue().unwrap();
+    curthread!() = ready_queue.dequeue().unwrap();
     (*curthread!()).sched_node = core::ptr::null_mut();
 
     if (*curthread!()).spawned != 0 {

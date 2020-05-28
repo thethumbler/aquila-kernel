@@ -721,7 +721,7 @@ unsafe fn sys_thread_exit(value_ptr: *mut u8) {
     //curthread->value_ptr = value_ptr;
     let owner = curproc!();
 
-    thread_kill(curthread!());
+    (*curthread!()).kill();
 
     /* wakeup owner if it is waiting for joining */
     thread_queue_wakeup(&mut (*owner).thread_join);

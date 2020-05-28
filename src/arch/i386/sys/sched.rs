@@ -8,7 +8,6 @@ use crate::arch::i386::cpu::init::virtual_address;
 use crate::arch::i386::include::core::arch::X86Thread;
 use crate::include::mm::kvmem::*;
 use crate::sys::sched::kernel_idle;
-use crate::sys::thread::thread_kill;
 use crate::sys::sched::schedule;
 use crate::sys::sched::kidle;
 use crate::{print, curthread};
@@ -112,7 +111,9 @@ pub unsafe fn arch_idle() {
 }
 
 unsafe fn __arch_cur_thread_kill() {
-    thread_kill(curthread!());    /* Will set the stack to VMA(0x100000) */
+    /* will set the stack to vma(0x100000) */
+    (*curthread!()).kill();
+
     kfree(curthread!() as *mut u8);
     curthread!() = core::ptr::null_mut();
     kernel_idle();
