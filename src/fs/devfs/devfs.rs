@@ -1,16 +1,8 @@
 use prelude::*;
-
+use fs::*;
+use fs::tmpfs::tmpfs::tmpfs;
+use mm::*;
 use kern::time::*;
-use crate::include::core::types::*;
-use crate::include::fs::vfs::*;
-use crate::fs::vfs::*;
-use crate::include::mm::kvmem::*;
-use crate::include::bits::errno::*;
-use crate::fs::tmpfs::tmpfs::*;
-use crate::fs::vnode::*;
-use crate::include::fs::stat::*;
-use crate::include::core::time::*;
-use crate::include::core::module::*;
 
 use crate::{malloc_declare};
 

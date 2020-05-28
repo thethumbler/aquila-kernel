@@ -1,7 +1,8 @@
 use prelude::*;
 
+use mm::*;
+
 use arch::i386::cpu::init::x86_cpu_init;
-use crate::include::mm::mm::PAGE_SIZE;
 use crate::arch::i386::cpu::init::virtual_address;
 use crate::arch::i386::include::cpu::cpu::CR0_PG;
 use crate::arch::i386::include::cpu::cpu::read_cr0;

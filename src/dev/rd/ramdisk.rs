@@ -1,10 +1,7 @@
 use prelude::*;
-
-use crate::include::core::module::*;
 use dev::dev::*;
 use dev::kdev::*;
-use crate::include::boot::boot::BootInfo;
-use crate::include::fs::vfs::FileOps;
+use boot::*;
 
 extern "C" {
     static __kboot: *const BootInfo;

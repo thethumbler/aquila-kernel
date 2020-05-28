@@ -2,13 +2,9 @@ use prelude::*;
 
 use kern::string::*;
 use arch::i386::sys::*;
-use crate::include::core::types::*;
-use crate::include::core::arch::*;
-
-use crate::sys::thread::*;
-use crate::sys::binfmt::*;
-
-use crate::include::mm::kvmem::*;
+use sys::thread::*;
+use sys::binfmt::*;
+use mm::*;
 
 use crate::{malloc_declare};
 

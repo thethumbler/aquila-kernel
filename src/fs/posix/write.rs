@@ -1,12 +1,9 @@
 use prelude::*;
 use fs::*;
+use bits::fcntl::*;
 
 use dev::kdev::*;
 
-use include::fs::vfs::*;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::fcntl::*;
 use crate::sys::thread::*;
 
 /**

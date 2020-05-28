@@ -1,11 +1,10 @@
 use prelude::*;
 
-use crate::include::mm::kvmem::*;
-use crate::arch::i386::include::cpu::cpu::*;
-use crate::arch::i386::include::core::arch::X86Thread;
-use crate::sys::thread::Thread;
-use crate::sys::sched::_curthread;
-use crate::{curthread, malloc_define};
+use arch::include::core::arch::X86Thread;
+use arch::include::cpu::cpu::*;
+use mm::*;
+use sys::sched::*;
+use sys::thread::*;
 
 malloc_define!(M_X86_FPU, "x86-fpu\0", "x86 FPU context\0");
 

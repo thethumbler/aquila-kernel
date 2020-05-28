@@ -1,12 +1,9 @@
 use prelude::*;
 
+use arch::sys::*;
+use core::fmt;
 use sys::process::*;
 use sys::sched::*;
-
-use arch::i386::sys::*;
-use core::fmt;
-
-use crate::{malloc_define, curthread};
 
 malloc_define!(M_THREAD, "thread\0", "thread structure\0");
 

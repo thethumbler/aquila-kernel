@@ -1,15 +1,10 @@
 use prelude::*;
+use fs::*;
+use fs::devfs::devfs::devfs;
+use mm::*;
 
 use kern::string::*;
 use dev::rd::ramdisk::rd_size;
-use crate::fs::vnode::Vnode;
-use crate::include::fs::vfs::Filesystem;
-use crate::fs::devfs::devfs::devfs;
-use crate::include::fs::stat::S_IFBLK;
-use crate::include::bits::errno::*;
-use crate::fs::vfs::vfs_mount_root;
-use crate::include::mm::kvmem::*;
-use crate::include::core::types::devid_t;
 use crate::{malloc_declare, print, DEV};
 
 malloc_declare!(M_VNODE);

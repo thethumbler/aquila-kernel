@@ -1,16 +1,11 @@
 use prelude::*;
-
-use sys::process::Process;
-
-use kern::string::*;
-use crate::include::mm::kvmem::*;
-use crate::include::fs::termios::*;
-use crate::include::bits::errno::*;
-use crate::dev::tty::tty::*;
-use crate::include::fs::ioctl::*;
-use crate::include::core::types::*;
-use crate::sys::signal::*;
-use crate::{malloc_define, curproc, print};
+use dev::tty::tty::*;
+use fs::ioctl::*;
+use fs::termios::*;
+use mm::*;
+use sys::process::*;
+use sys::sched::*;
+use sys::signal::*;
 
 malloc_define!(M_TTY, b"tty\0", b"tty structure\0");
 malloc_define!(M_TTY_COOK, b"tty-cook\0", "tty cooking buffer\0");

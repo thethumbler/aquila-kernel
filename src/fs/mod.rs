@@ -1,4 +1,5 @@
 pub mod vnode;
+pub mod fd;
 pub mod read;
 pub mod chmod;
 pub mod chown;
@@ -21,6 +22,7 @@ pub mod unlink;
 pub mod vm_object;
 pub mod pipe;
 pub mod vfs;
+pub mod termios;
 
 pub mod posix;
 pub mod pseudofs;
@@ -30,6 +32,7 @@ pub mod devfs;
 pub mod initramfs;
 
 pub use self::vnode::*;
+pub use self::fd::*;
 pub use self::read::*;
 pub use self::chmod::*;
 pub use self::chown::*;
@@ -52,6 +55,3 @@ pub use self::unlink::*;
 pub use self::vm_object::*;
 pub use self::pipe::*;
 pub use self::vfs::*;
-
-// XXX
-pub use include::fs::vfs::*;

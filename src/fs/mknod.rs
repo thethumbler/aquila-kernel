@@ -1,16 +1,9 @@
 use prelude::*;
 use fs::*;
-
-use kern::string::*;
-use include::fs::stat::*;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-use crate::include::mm::kvmem::*;
+use bits::dirent::*;
+use mm::*;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK};
-
 
 pub unsafe fn vfs_mknod(path: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     let mut ret = 0;

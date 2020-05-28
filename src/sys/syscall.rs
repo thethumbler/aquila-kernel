@@ -1,45 +1,23 @@
 use prelude::*;
-use fs::*;
 
-use sys::session::*;
+use arch;
+use arch::sys::sched::*;
+use bits::dirent::*;
+use bits::fcntl::*;
+use bits::mman::*;
+use bits::utsname::*;
+use fs::*;
+use kern::time::*;
+use mm::*;
+use net::socket::*;
+use sys::execve::*;
+use sys::fork::*;
 use sys::pgroup::*;
 use sys::process::*;
-
-use kern::string::*;
-use net::socket::*;
-use kern::time::*;
-use arch::i386::sys::sched::*;
-use arch;
-use crate::include::core::types::*;
-use crate::include::core::time::*;
-
-use crate::include::bits::errno::*;
-use crate::include::bits::fcntl::*;
-use crate::include::bits::dirent::*;
-use crate::include::bits::utsname::*;
-use crate::include::bits::mman::*;
-
-//use crate::include::sys::sched::*;
-use crate::sys::sched::*;
-use crate::sys::thread::*;
-use crate::sys::signal::*;
-use crate::sys::fork::*;
-use crate::sys::execve::*;
-
-use crate::include::fs::stat::*;
-
-use mm::vmm::*;
-use crate::include::mm::kvmem::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::mm::*;
-
-use crate::include::net::socket::*;
-
-use crate::fs::mount::*;
-
-use crate::kern::print::*;
-use crate::{curproc, curthread, page_round, S_ISDIR, print};
+use sys::sched::*;
+use sys::session::*;
+use sys::signal::*;
+use sys::thread::*;
 
 /* XXX */
 const FDS_COUNT: usize = 64;

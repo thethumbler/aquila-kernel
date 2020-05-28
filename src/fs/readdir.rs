@@ -1,17 +1,10 @@
 use prelude::*;
-
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-use crate::include::fs::vfs::*;
-use crate::include::fs::stat::*;
-use crate::fs::vnode::*;
+use fs::*;
+use bits::dirent::*;
 
 use crate::kern::print::cstr;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK, S_ISDIR, print};
 
 /** read entries from a directory vnode
  * \ingroup vfs

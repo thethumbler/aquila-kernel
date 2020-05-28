@@ -1,14 +1,10 @@
 use prelude::*;
 
 use fs::*;
-use kern::print::cstr;
+use mm::*;
 
-use kern::string::*;
-use crate::include::fs::vfs::*;
-use crate::include::mm::kvmem::*;
-use crate::include::bits::errno::*;
+use kern::print::cstr;
 use crate::{print, malloc_define};
-use fs::vfs::registered_fs;
 
 static mut mounts_queue: Queue<*mut Mountpoint> = Queue::empty();
 pub static mut mounts: *mut Queue<*mut Mountpoint> = unsafe { &mut mounts_queue };

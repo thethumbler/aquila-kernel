@@ -1,14 +1,12 @@
 use prelude::*;
 
+use mm::*;
 use sys::process::*;
 use sys::thread::*;
-//use crate::arch::Arch;
-//use crate::mm::kvmem::*;
-//use crate::arch::*;
+
 use crate::arch::i386::include::core::*;
 use crate::arch::i386::include::cpu::*;
 
-use crate::include::mm::kvmem::*;
 use crate::{malloc_declare};
 
 malloc_declare!(M_X86_THREAD);

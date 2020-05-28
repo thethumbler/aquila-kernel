@@ -1,33 +1,15 @@
 use prelude::*;
+use fs::*;
+use fs::rofs::*;
+use fs::posix::*;
+use fs::initramfs::*;
+use mm::*;
+use bits::dirent::DirectoryEntry;
 
 use kern::string::*;
 use kern::time::*;
-use crate::fs::posix::close::posix_file_close;
-use crate::fs::posix::lseek::posix_file_lseek;
-use crate::fs::posix::readdir::posix_file_readdir;
-use crate::fs::posix::write::posix_file_write;
-use crate::fs::posix::read::posix_file_read;
-use crate::fs::posix::open::posix_file_open;
-use crate::fs::rofs::rofs_vmknod;
-use crate::fs::rofs::rofs_vunlink;
-use crate::fs::rofs::rofs_trunc;
-use crate::fs::rofs::rofs_write;
-use crate::fs::read::vfs_read;
 
-use crate::include::fs::vfs::FileDescriptor;
-use crate::include::bits::dirent::DirectoryEntry;
-use crate::include::fs::stat::*;
-use crate::include::bits::errno::*;
-use crate::include::core::types::*;
-use crate::include::fs::vfs::FileOps;
-use crate::include::fs::vfs::VnodeOps;
-use crate::include::fs::vfs::Filesystem;
-use crate::include::mm::kvmem::*;
-use crate::fs::initramfs::initramfs::initramfs_archiver_register;
-use crate::fs::vnode::Vnode;
-use crate::include::core::string::*;
-use crate::include::core::module::*;
-use crate::{print, malloc_declare, malloc_define, S_ISDIR};
+use crate::{print, malloc_declare, malloc_define};
 
 malloc_declare!(M_VNODE);
 

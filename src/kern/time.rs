@@ -1,7 +1,6 @@
 use prelude::*;
 
 use crate::arch::i386::platform::misc::cmos::arch_time_get;
-use crate::include::core::types::*;
 
 /* XXX use a better name */
 pub unsafe fn gettime(ts: *mut TimeSpec) -> isize {

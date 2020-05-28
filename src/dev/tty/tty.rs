@@ -1,15 +1,13 @@
 use prelude::*;
 
-use sys::process::Process;
-use sys::pgroup::ProcessGroup;
-use dev::tty::uart::uart::uart;
 use dev::dev::*;
 use dev::kdev::*;
-
-use crate::include::core::module::*;
-use crate::include::fs::termios::Termios;
-use crate::include::fs::ioctl::Winsize;
-use crate::{curproc};
+use dev::tty::uart::uart::uart;
+use fs::ioctl::*;
+use fs::termios::*;
+use sys::pgroup::*;
+use sys::process::*;
+use sys::sched::*;
 
 pub type ttyio = Option<unsafe fn(tty: *mut Tty, size: usize, buf: *const u8) -> isize>;
 

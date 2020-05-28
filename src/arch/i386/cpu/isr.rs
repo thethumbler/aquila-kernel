@@ -1,16 +1,13 @@
 use prelude::*;
 
-use arch::i386::sys::syscall::arch_syscall;
-use arch::i386::cpu::idt::x86_idt_gate_user_set;
-use arch::i386::cpu::idt::x86_idt_gate_set;
-use arch::i386::cpu::fpu::x86_fpu_trap;
-use arch::i386::mm::i386::arch_mm_page_fault;
-use crate::arch::i386::include::cpu::cpu::*;
-use crate::arch::i386::include::core::arch::*;
-use crate::sys::sched::*;
-use crate::arch::i386::cpu::gdt::x86_kernel_stack_set;
-
-use crate::{print, curthread};
+use arch::cpu::fpu::x86_fpu_trap;
+use arch::cpu::gdt::x86_kernel_stack_set;
+use arch::cpu::idt::*;
+use arch::include::core::arch::*;
+use arch::include::cpu::cpu::*;
+use arch::mm::i386::arch_mm_page_fault;
+use arch::sys::syscall::arch_syscall;
+use sys::sched::*;
 
 extern "Rust" {
     fn __x86_isr0();

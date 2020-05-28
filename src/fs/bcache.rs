@@ -1,8 +1,7 @@
 use prelude::*;
 
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::mm::kvmem::*;
+use fs::*;
+use mm::*;
 
 use crate::{malloc_define};
 

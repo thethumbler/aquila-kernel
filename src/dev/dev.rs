@@ -1,14 +1,8 @@
 use prelude::*;
-
-use crate::mm::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-
-use crate::include::fs::vfs::*;
-use crate::include::core::types::*;
+use fs::*;
+use mm::*;
 
 /* device descriptor */
-#[repr(C)]
 pub struct DeviceDescriptor {
     pub devtype: mode_t,
     pub major:   devid_t,
@@ -16,7 +10,6 @@ pub struct DeviceDescriptor {
 }
 
 /* device */
-#[repr(C)]
 pub struct Device {
     pub name: &'static str,
 

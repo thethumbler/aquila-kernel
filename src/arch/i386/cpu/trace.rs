@@ -1,8 +1,8 @@
 use prelude::*;
 
-use crate::sys::binfmt::elf::*;
-use crate::include::boot::boot::BootInfo;
-use crate::kern::print::cstr;
+use sys::binfmt::elf::*;
+use boot::BootInfo;
+use kern::print::cstr;
 use crate::{print};
 
 struct StackFrame {

@@ -1,8 +1,7 @@
 use prelude::*;
 
-use crate::include::core::types::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
+use mm::vmm::*;
+use mm::kvmem::*;
 use crate::malloc_define;
 
 malloc_define!(M_VM_OBJECT, "vm-object\0", "virtual memory object\0");

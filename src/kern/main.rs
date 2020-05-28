@@ -1,24 +1,19 @@
 use prelude::*;
 
+use mm::*;
+use fs::*;
+use fs::initramfs::*;
 use sys::process::*;
-use arch::i386::sys::proc::arch_proc_init;
-use arch::i386::sys::proc::arch_init_execve;
+use sys::sched::*;
+use sys::binfmt::*;
+use sys::thread::*;
+use dev::kdev::*;
+use kern::module::*;
+use boot::*;
 
-use crate::kern::module::modules_init;
-use crate::dev::kdev::kdev_init;
-use crate::mm::vmm::kvm_space;
-use crate::include::mm::mm::PAGE_SIZE;
-use crate::include::boot::boot::BootInfo;
-use crate::mm::vm_entry::VmEntry;
-use crate::fs::vfs::vfs_init;
-use crate::fs::initramfs::initramfs::load_ramdisk;
-use crate::sys::sched::sched_init_spawn;
-use crate::kern::print::cstr;
-use crate::sys::binfmt::binfmt::binfmt_load;
-use crate::arch::i386::mm::i386::pmap_switch;
-use crate::sys::thread::Thread;
-
-use crate::{print, curproc, curthread};
+use arch::sys::proc::arch_proc_init;
+use arch::sys::proc::arch_init_execve;
+use arch::mm::i386::pmap_switch;
 
 pub unsafe fn kmain(boot: *const BootInfo) {
     /* FIXME */

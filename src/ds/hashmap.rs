@@ -1,6 +1,8 @@
 use prelude::*;
 
+use mm::*;
 use core::hash::{Hash, Hasher};
+
 struct DummyHasher {
     state: u64,
 }
@@ -26,12 +28,8 @@ impl DummyHasher {
 }
 
 
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-
 use core::marker::PhantomData;
 
-use crate::include::mm::kvmem::*;
 use crate::malloc_define;
 use crate::print;
 

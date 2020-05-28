@@ -1,7 +1,6 @@
 use prelude::*;
 
-use crate::include::mm::kvmem::*;
-use crate::include::core::types::*;
+use mm::*;
 use crate::{malloc_define, malloc_declare};
 
 malloc_define!(M_RINGBUF, "ring-buffer\0", "ringbuffer structure\0");

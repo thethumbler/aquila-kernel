@@ -1,9 +1,7 @@
 use prelude::*;
+use fs::*;
+use mm::*;
 
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::mm::kvmem::*;
-use crate::fs::vnode::*;
 use crate::{malloc_define};
 
 malloc_define!(M_VCACHE, "vcache\0", "vnode cache structure\0");

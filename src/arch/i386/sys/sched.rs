@@ -1,16 +1,13 @@
 use prelude::*;
 
+use sys::sched::*;
+use mm::*;
+
 use arch::i386::platform::pc::init::platform_timer_setup;
-use crate::arch::i386::include::cpu::cpu::X86Regs;
-use crate::include::core::types::TimeSpec;
-use crate::arch::i386::cpu::gdt::x86_kernel_stack_set;
-use crate::arch::i386::cpu::init::virtual_address;
-use crate::arch::i386::include::core::arch::X86Thread;
-use crate::include::mm::kvmem::*;
-use crate::sys::sched::kernel_idle;
-use crate::sys::sched::schedule;
-use crate::sys::sched::kidle;
-use crate::{print, curthread};
+use arch::i386::include::cpu::cpu::X86Regs;
+use arch::i386::cpu::gdt::x86_kernel_stack_set;
+use arch::i386::cpu::init::virtual_address;
+use arch::i386::include::core::arch::X86Thread;
 
 extern "C" {
     fn x86_read_ip() -> usize;

@@ -1,12 +1,7 @@
 use prelude::*;
 
+use mm::*;
 use arch::i386::mm::i386::*;
-use crate::mm::*;
-
-use crate::include::mm::vm::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::kvmem::*;
-use crate::include::mm::pmap::*;
 
 use crate::{page_align, malloc_declare, print};
 

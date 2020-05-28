@@ -1,22 +1,11 @@
 use prelude::*;
-
 use fs::*;
-
-use kern::string::*;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-use crate::include::bits::fcntl::*;
-use crate::include::fs::vfs::*;
-use crate::include::fs::stat::*;
-use crate::include::mm::kvmem::*;
-use crate::fs::vnode::*;
-use crate::fs::read::*;
-use crate::mm::kvmem::M_BUFFER;
+use mm::*;
+use bits::dirent::*;
+use bits::fcntl::*;
 use crate::kern::print::cstr;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK, S_ISLNK, print};
 
 unsafe fn vfs_follow(vnode: *mut Vnode, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     /* TODO enforce limit */

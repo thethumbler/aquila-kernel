@@ -1,14 +1,5 @@
 use prelude::*;
-
-use mm::mm::*;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-
-use crate::malloc_define;
-use crate::include::mm::kvmem::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::alloc::*;
+use mm::*;
 
 malloc_define!(M_VM_ANON, "vm-anon\0", "anonymous virtual memory object\0");
 

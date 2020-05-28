@@ -22,10 +22,6 @@ extern crate alloc;
 pub mod prelude;
 pub mod panic;
 
-use crate::include::core::string::*;
-
-pub mod include;
-
 #[macro_use]
 pub mod arch;
 pub mod kern;
@@ -35,9 +31,10 @@ pub mod sys;
 pub mod fs;
 pub mod dev;
 pub mod net;
+pub mod bits;
+pub mod boot;
 
-use include::mm::kvmem::*;
-use mm::kvmem::*;
+use mm::*;
 
 use alloc::alloc::{GlobalAlloc, Layout, AllocErr};
 malloc_declare!(M_BUFFER);

@@ -1,11 +1,7 @@
 use prelude::*;
-
 use fs::*;
-
-use kern::string::*;
-use crate::include::mm::kvmem::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
+use mm::*;
+use bits::dirent::*;
 
 pub unsafe fn vfs_unlink(path: *mut u8, uio: *mut UserOp) -> isize {
     let mut err = 0;

@@ -1,16 +1,6 @@
 use prelude::*;
-
-use mm::vmm::kvm_space;
-use mm::mm::*;
-use crate::include::core::types::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
-
-use crate::mm::vm_object::*;
-use crate::mm::vm_space::*;
-use crate::fs::*;
-use crate::fs::read::*;
+use fs::*;
+use mm::*;
 
 use crate::{page_align};
 

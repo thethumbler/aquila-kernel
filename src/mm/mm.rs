@@ -1,29 +1,13 @@
 use prelude::*;
 
-use mm::buddy::*;
 use arch::i386::mm::i386::*;
 use arch::i386::mm::mm::arch_mm_setup;
-
-/*
- * \defgroup mm kernel/mm
- * \brief Memory Management
- *
- * The memory management subsystem is responsible for the allocation
- * of physical memory pages, management of virtual memory of processes
- * and caching of virtual memory objects.
- */
-
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::buddy::*;
-use crate::include::boot::boot::*;
-use crate::{page_align, page_round, print};
+use boot::*;
+use mm::*;
+use sys::sched::*;
 
 /* FIXME use boot time allocation scheme */
-#[no_mangle]
-pub static mut pages: [VmPage; 768*1024] = [VmPage {
+pub static mut PAGES: [VmPage; 768*1024] = [VmPage {
     paddr: 0,
     vm_object: core::ptr::null_mut(),
     off: 0,
@@ -32,7 +16,7 @@ pub static mut pages: [VmPage; 768*1024] = [VmPage {
 
 macro_rules! page {
     ($addr:expr) => {
-        (pages[(($addr)/PAGE_SIZE) as usize])
+        (PAGES[(($addr)/PAGE_SIZE) as usize])
     }
 }
 
@@ -223,3 +207,24 @@ pub unsafe fn mm_setup(boot: *mut BootInfo) {
 
     arch_mm_setup();
 }
+
+pub const PAGE_SIZE: usize = 4096;
+pub const PAGE_MASK: usize = 4096 - 1;
+
+pub macro page_align {
+    ($ptr:expr) => {
+        (($ptr as usize) & !PAGE_MASK)
+    }
+}
+
+pub macro page_round {
+    ($ptr:expr) => {
+        ((($ptr as usize) + PAGE_MASK) & !PAGE_MASK)
+    }
+}
+
+pub const PF_PRESENT: usize = 0x001;
+pub const PF_READ:    usize = 0x002;
+pub const PF_WRITE:   usize = 0x004;
+pub const PF_EXEC:    usize = 0x008;
+pub const PF_USER:    usize = 0x010;

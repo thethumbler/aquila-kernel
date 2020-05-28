@@ -1,11 +1,5 @@
 use prelude::*;
-
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
-use crate::include::fs::stat::*;
-use crate::fs::vnode::*;
+use fs::*;
 
 /* closes a vnode (i.e. decrements reference counts) */
 pub unsafe fn vfs_close(vnode: *mut Vnode) -> isize {

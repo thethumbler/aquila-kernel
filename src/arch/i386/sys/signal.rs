@@ -1,17 +1,14 @@
 use prelude::*;
 
+use arch::cpu::gdt::x86_kernel_stack_set;
+use arch::include::core::arch::X86_CS;
+use arch::include::core::arch::X86_SS;
+use arch::include::core::arch::X86Thread;
+use arch::include::cpu::cpu::X86Regs;
+use arch::sys::sched::arch_sleep;
 use sys::process::*;
-
-use arch::i386::sys::sched::arch_sleep;
-use crate::arch::i386::include::cpu::cpu::X86Regs;
-use crate::arch::i386::include::core::arch::X86Thread;
-use crate::arch::i386::include::core::arch::X86_CS;
-use crate::arch::i386::include::core::arch::X86_SS;
-use crate::arch::i386::cpu::gdt::x86_kernel_stack_set;
-use crate::sys::signal::sig_default_action;
-use crate::sys::signal::SignalDefaultAction;
-use crate::sys::signal::SIG_DFL;
-use crate::{curthread, curproc};
+use sys::signal::*;
+use sys::sched::*;
 
 extern "C" {
     fn x86_jump_user(eax: usize, eip: usize, cs: usize, eflags: usize, esp: usize, ss: usize) -> !;

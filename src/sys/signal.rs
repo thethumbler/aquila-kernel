@@ -1,16 +1,11 @@
 use prelude::*;
 
-use sys::session::*;
+use arch;
 use sys::pgroup::*;
 use sys::process::*;
+use sys::sched::*;
+use sys::session::*;
 use sys::thread::*;
-
-use arch;
-
-use crate::include::bits::errno::*;
-use crate::include::core::types::*;
-
-use crate::{curproc};
 
 /* signal numbers */
 pub const SIGHUP:   isize = 1;  /**< hangup */

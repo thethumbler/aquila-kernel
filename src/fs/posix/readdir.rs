@@ -1,12 +1,7 @@
 use prelude::*;
 use fs::*;
-
-use crate::include::core::types::*;
-use crate::include::bits::fcntl::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-
-use crate::{print};
+use bits::fcntl::*;
+use bits::dirent::*;
 
 /**
  * posix_file_readdir

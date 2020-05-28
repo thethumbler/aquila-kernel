@@ -1,21 +1,14 @@
 use prelude::*;
 
-use arch::i386::mm::i386::*;
-use crate::arch::i386::include::core::arch::X86Thread;
-use crate::arch::i386::include::core::arch::KERN_STACK_SIZE;
-use crate::arch::i386::include::core::arch::X86_CS;
-use crate::arch::i386::include::core::arch::X86_EFLAGS;
-use crate::arch::i386::include::core::arch::X86_SS;
-use crate::arch::i386::sys::signal::arch_handle_signal;
-use crate::arch::i386::cpu::fpu::x86_fpu_disable;
-use crate::sys::sched::kernel_idle;
-use crate::sys::thread::Thread;
-use crate::include::mm::kvmem::*;
-use crate::arch::i386::cpu::fpu::last_fpu_thread;
-use crate::arch::i386::cpu::gdt::x86_kernel_stack_set;
-use crate::arch::i386::cpu::init::virtual_address;
-
-use crate::{malloc_define, curthread};
+use arch::cpu::fpu::*;
+use arch::cpu::gdt::x86_kernel_stack_set;
+use arch::cpu::init::virtual_address;
+use arch::include::core::arch::*;
+use arch::mm::i386::*;
+use arch::sys::signal::arch_handle_signal;
+use mm::*;
+use sys::sched::*;
+use sys::thread::*;
 
 extern "C" {
     fn x86_read_ip() -> usize;

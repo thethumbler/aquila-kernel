@@ -1,16 +1,10 @@
 use prelude::*;
+use fs::*;
 
 use dev::kdev::*;
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
-use crate::dev::*;
-use crate::include::fs::stat::*;
-use crate::fs::vnode::*;
+use dev::*;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK};
 
 /* read data from a vnode */
 pub unsafe fn vfs_read(vnode: *mut Vnode, off: off_t, size: usize, buf: *mut u8) -> isize {

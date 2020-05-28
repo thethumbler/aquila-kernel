@@ -1,6 +1,6 @@
 use prelude::*;
 
-use crate::include::mm::kvmem::*;
+use mm::*;
 use crate::{malloc_declare};
 
 malloc_declare!(M_BUFFER);

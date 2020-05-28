@@ -1,20 +1,10 @@
 use prelude::*;
+use fs::*;
+use fs::posix::*;
+use fs::pseudofs::*;
+use mm::*;
+use kern::time::*;
 
-use kern::string::*;
-use kern::time::gettime;
-use crate::include::core::types::*;
-use crate::include::core::module::*;
-use crate::include::core::time::*;
-
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
-use crate::include::fs::stat::*;
-use crate::include::mm::kvmem::*;
-
-use crate::fs::vfs::*;
-use crate::fs::vnode::*;
-use crate::fs::posix::*;
-use crate::fs::pseudofs::*;
 
 use crate::{malloc_declare};
 

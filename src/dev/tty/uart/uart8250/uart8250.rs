@@ -7,7 +7,6 @@ use crate::dev::tty::uart::uart::uart_recieve_handler;
 use crate::arch::i386::include::cpu::io::IOAddr;
 use crate::arch::i386::include::cpu::io::IOADDR_PORT;
 use crate::arch::i386::platform::misc::pic::x86_irq_handler_install;
-use crate::include::core::module::*;
 use crate::arch::i386::include::cpu::cpu::X86Regs;
 
 const UART_IER: usize = 1;

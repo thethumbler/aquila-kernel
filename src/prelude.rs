@@ -1,29 +1,21 @@
 extern crate alloc;
 
-pub use include::core::types::*;
-pub use include::bits::errno::*;
+pub use kern::types::*;
+pub use bits::errno::*;
 pub use ds::*;
 
 pub use mm::kvmem::*;
+pub use kern::types::*;
 pub use kern::string::*;
+pub use kern::module::*;
 pub use alloc::boxed::Box;
 pub use alloc::rc::Rc;
-pub use crate::{print, malloc_define, malloc_declare};
+pub use kern::print::cstr;
+pub use crate::{print};
 
 // XXX
-pub use include::mm::kvmem::MallocType;
-pub use include::mm::kvmem::M_ZERO;
-
-//pub struct AllocTag {
-//    pub name: *const u8,
-//    pub desc: *const u8,
-//    pub nr: usize,
-//    pub total: usize,
-//    pub qnode: *mut Qnode,
-//}
-
-//use include::mm::kvmem::MallocType;
-//unsafe impl Sync for AllocTag {}
+pub use mm::kvmem::MallocType;
+pub use mm::kvmem::M_ZERO;
 
 pub trait TaggedAllocator<T> {
     fn new_tagged(tag: &MallocType, obj: T) -> Box<T> {

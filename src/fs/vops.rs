@@ -1,21 +1,10 @@
 use prelude::*;
-
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
+use fs::*;
 use dev::dev::*;
 use dev::kdev::*;
-use crate::include::fs::stat::*;
-
-use crate::mm::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-
-use crate::fs::vnode::*;
+use mm::*;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK, S_ISDIR};
 
 pub unsafe fn vfs_vmknod(dir: *mut Vnode, name: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     /* invalid request */

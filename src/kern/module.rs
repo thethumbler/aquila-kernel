@@ -1,7 +1,5 @@
 use prelude::*;
 
-use crate::{print};
-
 extern "C" {
     static module_init: u8;
     static module_init_end: u8;
@@ -26,3 +24,14 @@ pub unsafe fn modules_init() -> isize {
     return 0;
 }
 
+pub macro module_init {
+    ($name:ident, $init:expr, $fini:expr) => {
+        #[used]
+        #[link_section = ".module.init"]
+        static MODULE_INIT: Option<unsafe fn() -> isize> = $init;
+
+        #[used]
+        #[link_section = ".module.fini"]
+        static MODULE_FINI: Option<unsafe fn() -> isize> = $fini;
+    }
+}

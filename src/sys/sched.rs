@@ -3,26 +3,18 @@ use prelude::*;
 use sys::session::*;
 use sys::process::*;
 use sys::thread::*;
-
-use kern::string::*;
-use arch::i386::sys::*;
-use crate::include::core::arch::*;
-
-use crate::{print};
+use arch::sys::*;
 
 pub static mut ready_queue: Queue<*mut Thread> = Queue::empty();
-
 pub static mut _curthread: *mut Thread = core::ptr::null_mut();
 
-#[macro_export]
-macro_rules! curthread {
+pub macro curthread {
     () => {
         crate::sys::sched::_curthread
     }
 }
 
-#[macro_export]
-macro_rules! curproc {
+pub macro curproc {
     () => {
         ((*crate::sys::sched::_curthread).owner)
     }

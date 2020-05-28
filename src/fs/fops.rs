@@ -1,19 +1,50 @@
 use prelude::*;
 use fs::*;
+use bits::fcntl::*;
+use bits::dirent::*;
 
 use net::socket::*;
-use include::fs::stat::*;
 use dev::dev::*;
 use dev::kdev::*;
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::fcntl::*;
-use crate::include::bits::dirent::*;
-use crate::include::net::socket::*;
+use net::socket::*;
 
 use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-use crate::{S_ISCHR, S_ISBLK, S_ISDIR};
+
+#[derive(Clone)]
+pub struct FileOps {
+    pub _open:      Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
+    pub _read:      Option<unsafe fn(file: *mut FileDescriptor, buf: *mut u8, size: usize) -> isize>,
+    pub _write:     Option<unsafe fn(file: *mut FileDescriptor, buf: *mut u8, size: usize) -> isize>,
+    pub _readdir:   Option<unsafe fn(file: *mut FileDescriptor, dirent: *mut DirectoryEntry) -> isize>, 
+    pub _lseek:     Option<unsafe fn(file: *mut FileDescriptor, offset: off_t, whence: isize) -> off_t>,
+    pub _close:     Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
+    pub _ioctl:     Option<unsafe fn(file: *mut FileDescriptor, request: usize, argp: *mut u8) -> isize>,
+    pub _trunc:     Option<unsafe fn(file: *mut FileDescriptor, len: off_t) -> isize>,
+
+    /* helpers */
+    pub _can_read:  Option<unsafe fn(file: *mut FileDescriptor, size: usize) -> isize>,
+    pub _can_write: Option<unsafe fn(file: *mut FileDescriptor, size: usize) -> isize>,
+    pub _eof:       Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
+}
+
+impl FileOps {
+    pub const fn none() -> FileOps {
+        FileOps {
+            _open: None,
+            _read: None,
+            _write: None,
+            _readdir: None,
+            _lseek: None,
+            _close: None,
+            _ioctl: None,
+            _trunc: None,
+            _can_read: None,
+            _can_write: None,
+            _eof: None,
+        }
+    }
+}
+
 
 /**
  * \ingroup vfs

@@ -1,36 +1,15 @@
 use prelude::*;
 
-use sys::session::*;
+use arch::mm::i386::*;
+use arch::platform::pc::reboot::arch_reboot;
+use arch::sys::*;
+use fs::*;
+use mm::*;
 use sys::pgroup::*;
-
-use arch::i386::platform::pc::reboot::arch_reboot;
-use arch::i386::sys::*;
-use arch::i386::mm::i386::*;
-use crate::include::bits::errno::*;
-
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-
-use crate::sys::signal::*;
-use crate::sys::thread::*;
-
-use crate::mm::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
-use crate::include::mm::pmap::*;
-
-use crate::include::fs::vfs::*;
-use crate::include::core::types::*;
-use crate::sys::signal::*;
-use crate::sys::thread::*;
-use crate::include::fs::vfs::*;
-
-use crate::mm::*;
-use crate::include::mm::vm::*;
-
-use crate::fs::{Vnode};
-
-use crate::{curthread, malloc_define, bitmap_new, print};
+use sys::sched::*;
+use sys::session::*;
+use sys::signal::*;
+use sys::thread::*;
 
 malloc_define!(M_PROC, "proc\0", "process structure\0");
 malloc_define!(M_FDS, "fds\0", "file descriptor array\0"); /* FIXME */

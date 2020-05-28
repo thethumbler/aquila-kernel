@@ -1,9 +1,10 @@
 use prelude::*;
 
-use crate::sys::binfmt::elf::*;
+use boot::*;
+use sys::binfmt::elf::*;
+
 use crate::arch::i386::cpu::init::virtual_address;
 use crate::arch::i386::include::boot::multiboot::*;
-use crate::include::boot::boot::*;
 
 #[inline]
 unsafe fn get_multiboot_mmap_count(info: *const MultibootInfo) -> isize {

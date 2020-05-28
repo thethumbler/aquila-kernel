@@ -1,17 +1,12 @@
 use prelude::*;
+use fs::*;
+use mm::*;
 
-use crate::include::fs::vfs::FileDescriptor;
-use crate::include::bits::errno::*;
-use crate::include::core::types::*;
 use crate::dev::dev::Device;
 use crate::dev::dev::DeviceDescriptor;
-use crate::include::fs::stat::*;
-use crate::mm::vm_space::AddressSpace;
-use crate::mm::vm_entry::VmEntry;
-use crate::include::mm::kvmem::*;
 use crate::kern::print::cstr;
 
-use crate::{malloc_define, print, S_ISCHR};
+use crate::{malloc_define, print};
 
 malloc_define!(M_KDEV_BLK, b"kdev-blk\0", b"kdev block buffer\0");
 

@@ -14,8 +14,7 @@ pub struct BitMap {
     pub max_idx: usize,   /* max index */
 }
 
-#[macro_export]
-macro_rules! bitmap_new {
+pub macro bitmap_new {
     ($n:expr) => {
         BitMap {
             map: &[0 as bitmap_t; $n] as *const _ as *mut bitmap_t,

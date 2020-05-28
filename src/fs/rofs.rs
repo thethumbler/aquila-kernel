@@ -1,9 +1,5 @@
 use prelude::*;
-
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
-use crate::fs::vnode::*;
+use fs::*;
 
 pub unsafe fn rofs_write(vnode: *mut Vnode, offset: off_t, size: usize, buf: *mut u8) -> usize {
     return -EROFS as usize;

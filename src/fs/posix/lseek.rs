@@ -1,7 +1,5 @@
 use prelude::*;
-
-use crate::include::core::types::*;
-use crate::include::fs::vfs::*;
+use fs::*;
 
 /**
  * posix_file_lseek

@@ -1,7 +1,6 @@
 use prelude::*;
+use mm::*;
 
-use crate::include::mm::kvmem::*;
-use crate::mm::kvmem::*;
 use crate::{malloc_declare};
 
 pub const X86_SS:     usize = 0x20 | 3;

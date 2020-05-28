@@ -1,8 +1,6 @@
 use prelude::*;
 
-use crate::include::core::types::TimeSpec;
 use crate::arch::i386::include::cpu::io::IOAddr;
-use crate::include::core::types::time_t;
 use crate::{print};
 
 const RTC_SEC: u8 = 0x00;     /* seconds */

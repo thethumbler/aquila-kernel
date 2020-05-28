@@ -1,24 +1,9 @@
 use prelude::*;
 
-use mm::buddy::*;
-use crate::include::core::types::*;
-use crate::include::mm::vm::paddr_t;
-use crate::include::mm::vm::vaddr_t;
-use crate::include::mm::mm::PAGE_SIZE;
-use crate::include::mm::mm::PAGE_MASK;
-use crate::include::mm::vm::VmPage;
+use mm::*;
 use crate::arch::i386::sys::execve::tlb_flush;
-use crate::mm::mm::{mm_page_incref, mm_page_decref, mm_page_ref};
-use crate::include::bits::errno::*;
-use crate::include::mm::buddy::*;
-use crate::include::mm::kvmem::*;
-use crate::mm::fault::mm_page_fault;
-use crate::include::mm::mm::{PF_PRESENT, PF_READ, PF_WRITE, PF_USER, PF_EXEC};
 use crate::arch::i386::include::cpu::cpu::read_cr3;
 use crate::arch::i386::cpu::init::{local_address, virtual_address};
-use crate::mm::vmm::kvm_space;
-use crate::include::mm::vm::*;
-use crate::mm::mm::mm_page;
 
 use crate::{malloc_define, print, page_align};
 

@@ -1,15 +1,11 @@
 use prelude::*;
 
-use crate::sys::syscall::syscall_table;
-use crate::sys::syscall::syscall_cnt;
-use crate::sys::thread::Thread;
-use crate::arch::i386::include::core::arch::X86Thread;
-use crate::arch::i386::include::cpu::cpu::X86Regs;
-use crate::kern::print::cstr;
-use crate::include::bits::errno::ENOSYS;
-use crate::sys::syscall::Syscall;
-
-use crate::{print, curthread, curproc};
+use arch::include::core::arch::X86Thread;
+use arch::include::cpu::cpu::X86Regs;
+use kern::print::cstr;
+use sys::syscall::*;
+use sys::thread::*;
+use sys::sched::*;
 
 #[no_mangle]
 pub unsafe fn arch_syscall(r: *mut X86Regs) {

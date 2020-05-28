@@ -1,25 +1,13 @@
 use prelude::*;
 
-use sys::process::Process;
+use dev::dev::*;
 use dev::tty::generic::*;
-use crate::dev::dev::Device;
-use crate::fs::posix::read::posix_file_read;
-use crate::fs::posix::write::posix_file_write;
-use crate::fs::posix::ioctl::posix_file_ioctl;
-use crate::include::fs::vfs::FileDescriptor;
-use crate::include::fs::vfs::FileOps;
-use crate::dev::dev::DeviceDescriptor;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::sys::thread::thread_queue_wakeup;
-use crate::fs::vnode::Vnode;
-use crate::kern::print::cstr;
-use crate::dev::tty::tty::Tty;
-use crate::dev::tty::tty::ttyio;
-use crate::include::fs::vfs::__vfs_can_always;
-use crate::include::fs::vfs::__vfs_eof_never;
-
-use crate::{curproc, print};
+use dev::tty::tty::*;
+use fs::*;
+use fs::posix::*;
+use sys::process::*;
+use sys::sched::*;
+use sys::thread::*;
 
 #[repr(C)]
 pub struct Uart {

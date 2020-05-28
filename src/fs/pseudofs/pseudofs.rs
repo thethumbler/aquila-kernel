@@ -1,22 +1,19 @@
 use prelude::*;
-
 use fs::*;
-
-use kern::string::*;
+use mm::*;
+use bits::dirent::*;
 use kern::time::*;
-use include::fs::pseudofs::PseudofsDirent;
-use include::fs::stat::*;
-use include::fs::vfs::*;
-
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-use crate::include::core::types::*;
-use crate::include::mm::kvmem::*;
-use crate::include::core::time::*;
-use crate::{malloc_define, malloc_declare, S_ISDIR};
+use crate::{malloc_define, malloc_declare};
 
 malloc_define!(M_PSEUDOFS_DENT, "pseudofs-dirent\0", "pseudofs directory entry\0");
 malloc_declare!(M_VNODE);
+
+pub struct PseudofsDirent {
+    pub d_name: *const u8,
+    pub d_ino: *mut Vnode,
+
+    pub next: *mut PseudofsDirent,
+}
 
 #[no_mangle]
 pub unsafe fn pseudofs_vmknod(dir: *mut Vnode, name: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {

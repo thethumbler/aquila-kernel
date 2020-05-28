@@ -1,7 +1,5 @@
 use prelude::*;
-
-use crate::fs::vnode::*;
-use crate::include::bits::errno::*;
+use fs::vnode::*;
 
 /* sync the metadata and/or data associated with a vnode */
 pub unsafe fn vfs_vsync(vnode: *mut Vnode, mode: isize) -> isize {

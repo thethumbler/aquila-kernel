@@ -1,22 +1,13 @@
 use prelude::*;
 
-use mm::mm::*;
+use arch::mm::i386::*;
 use mm::*;
-use arch::i386::mm::i386::*;
-
-use crate::include::core::types::*;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::pmap::*;
-use crate::include::mm::kvmem::*;
-use crate::sys::signal::*;
-use crate::{page_align, curproc, malloc_declare, curthread};
-use crate::{print};
+use sys::sched::*;
+use sys::signal::*;
 
 malloc_declare!(M_VM_AREF);
 
 /** a structure holding parameters relevant to a page fault */
-#[repr(C)]
 struct FaultInfo {
     flags: usize,
     addr: usize,
@@ -25,14 +16,6 @@ struct FaultInfo {
     vm_entry: *mut VmEntry,
 
     off: off_t,
-}
-
-use core::fmt;
-impl fmt::Debug for FaultInfo {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::write(f, core::format_args!("FaultInfo {{ flags: {:#x}, addr: {:#x}, vm_space: {:p}, vm_entry: {:p}, off: {:#x} }}",
-                self.flags, self.addr, self.vm_space, self.vm_entry, self.off))
-    }
 }
 
 fn check_violation(flags: usize, vm_flags: usize) -> isize {

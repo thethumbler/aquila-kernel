@@ -1,11 +1,7 @@
-use crate::include::core::types::*;
-use crate::include::core::string::*;
-use crate::include::bits::errno::*;
-use crate::include::fs::vfs::*;
-use crate::include::fs::stat::*;
-use crate::fs::vnode::*;
+use prelude::*;
+use fs::*;
 
-use crate::{ISDEV, S_ISCHR, S_ISBLK};
+use crate::{ISDEV};
 
 pub unsafe fn vfs_chmod(vnode: *mut Vnode, mode: mode_t) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_chmod(vnode=%p, mode=%x)\n", vnode, mode);

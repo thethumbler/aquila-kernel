@@ -1,10 +1,6 @@
 use prelude::*;
-
-use crate::include::core::string::*;
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::dirent::*;
-use crate::include::fs::vfs::*;
+use fs::*;
+use bits::dirent::*;
 use sys::thread::Thread;
 
 use crate::mm::*;

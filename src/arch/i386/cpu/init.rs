@@ -1,22 +1,20 @@
 use prelude::*;
 
-use crate::arch::i386::include::boot::multiboot::multiboot_info;
-use crate::include::boot::boot::*;
-use crate::arch::i386::include::boot::boot::process_multiboot_info;
-use crate::arch::i386::include::boot::multiboot::MultibootInfo;
-use crate::{print};
+use mm::*;
+use boot::*;
+use kern::main::*;
+use kern::kargs::*;
 
-use kern::main::kmain;
-use arch::i386::platform::pc::init::platform_init;
-use arch::i386::earlycon::earlycon::earlycon_reinit;
-use mm::kvmem::kvmem_setup;
-use mm::mm::mm_setup;
-use arch::i386::cpu::isr::x86_isr_setup;
-use arch::i386::cpu::idt::x86_idt_setup;
-use kern::kargs::kargs_parse;
-use arch::i386::cpu::gdt::x86_tss_setup;
-use arch::i386::cpu::gdt::x86_gdt_setup;
-use arch::i386::earlycon::earlycon::earlycon_init;
+use arch::include::boot::multiboot::multiboot_info;
+use arch::include::boot::boot::process_multiboot_info;
+use arch::include::boot::multiboot::MultibootInfo;
+use arch::platform::pc::init::platform_init;
+use arch::earlycon::earlycon::earlycon_reinit;
+use arch::cpu::isr::x86_isr_setup;
+use arch::cpu::idt::x86_idt_setup;
+use arch::cpu::gdt::x86_tss_setup;
+use arch::cpu::gdt::x86_gdt_setup;
+use arch::earlycon::earlycon::earlycon_init;
 
 extern "C" {
     /* must be defined in linker script */

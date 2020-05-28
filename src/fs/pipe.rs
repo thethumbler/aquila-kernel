@@ -2,23 +2,24 @@ use prelude::*;
 
 use fs::*;
 use fs::posix::*;
-
-use crate::include::core::types::*;
-use crate::include::bits::errno::*;
-use crate::include::bits::fcntl::*;
-
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
-
-use crate::include::fs::vfs::*;
-use crate::include::fs::pipe::*;
-use crate::include::fs::posix::*;
-
-use crate::fs::*;
-use crate::fs::vnode::*;
+use mm::*;
+use bits::fcntl::*;
 
 use crate::{malloc_define, malloc_declare};
+
+pub const PIPE_BUFLEN: usize = 1024;
+
+/** unix pipe */
+pub struct Pipe {
+    /** readers reference count */
+    pub r_ref: usize,
+
+    /** writers reference count */
+    pub w_ref: usize,
+
+    /** ring buffer */
+    pub ring: *mut RingBuf,
+}
 
 malloc_define!(M_PIPE, "pipe", "pipe structure");
 malloc_declare!(M_VNODE);

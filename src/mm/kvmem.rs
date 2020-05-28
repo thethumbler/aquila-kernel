@@ -1,17 +1,45 @@
 use prelude::*;
 
-use mm::vmm::*;
-use crate::mm::*;
+use mm::*;
 
-use mm::vmm::kvm_space;
-use crate::include::mm::mm::*;
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
-use crate::include::mm::pmap::*;
-use crate::include::mm::buddy::*;
-use crate::include::core::string::*;
 use crate::kern::print::cstr;
-use crate::{page_round, page_align, malloc_define, print};
+use crate::{page_round, page_align};
+
+#[repr(C)]
+pub struct MallocType {
+    pub name: *const u8,
+    pub desc: *const u8,
+    pub nr: usize,
+    pub total: usize,
+    pub qnode: *mut QueueNode<*mut MallocType>,
+}
+
+unsafe impl Sync for MallocType {}
+
+/* malloc flags */
+pub const M_ZERO: usize = 0x0001;
+
+pub macro malloc_define {
+    ($type:ident, $name:literal, $desc:literal) => {
+        #[no_mangle]
+        pub static $type: MallocType = MallocType {
+            name: $name.as_ptr(),
+            desc: $desc.as_ptr(),
+            nr: 0,
+            total: 0,
+            qnode: core::ptr::null_mut()
+        };
+    }
+}
+
+pub macro malloc_declare {
+    ($type:ident) => {
+        extern "C" {
+            static $type: MallocType;
+        }
+    }
+}
+
 
 malloc_define!(M_BUFFER, "buffer\0", "generic buffer\0");
 

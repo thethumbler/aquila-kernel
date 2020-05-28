@@ -1,9 +1,6 @@
 use prelude::*;
 
-use crate::mm::*;
-
-use crate::include::mm::vm::*;
-use crate::include::mm::kvmem::*;
+use mm::*;
 use crate::malloc_define;
 
 malloc_define!(M_VM_ENTRY, "vm_entry\0", "virtual memory map entry\0");
