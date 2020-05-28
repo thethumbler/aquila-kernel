@@ -17,8 +17,8 @@ static mut k_total_mem: usize = 0;
 #[no_mangle]
 static mut k_used_mem: usize = 0;
 
-static mut kstart: usize = 0;
-static mut kend: usize = 0;
+static mut KSTART: usize = 0;
+static mut KEND: usize = 0;
 
 const ALLOC_AREA_SIZE: usize = 1024 * 1024;
 
@@ -185,7 +185,7 @@ pub unsafe fn buddy_alloc(zone: usize, _sz: usize) -> paddr_t {
 pub unsafe fn buddy_free(zone: usize, addr: paddr_t, size: usize) {
     let mut addr = addr as usize;
 
-    if addr >= kstart && addr < kend {
+    if addr >= KSTART && addr < KEND {
         panic!("trying to free from kernel code");
     }
 
@@ -305,10 +305,10 @@ pub unsafe fn buddy_setup(total_mem: usize) -> isize {
         static kernel_end: u8;
     }
 
-    kstart = &kernel_start as *const _ as usize;
-    kend   = &kernel_end as *const _ as usize;
+    KSTART = &kernel_start as *const _ as usize;
+    KEND   = &kernel_end as *const _ as usize;
 
-    buddy_set_unusable(kstart, kend - kstart);
+    buddy_set_unusable(KSTART, KEND - KSTART);
 
     //extern struct boot *__kboot;
 

@@ -342,7 +342,7 @@ unsafe fn sys_waitpid(pid: pid_t, stat_loc: *mut isize, options: usize) {
         loop {
             let mut found = 0;
 
-            for node in procs.iter() {
+            for node in PROCS.iter() {
                 let proc = (*node).value;
 
                 if (*proc).parent != curproc!() {
@@ -1360,7 +1360,7 @@ unsafe impl Sync for Syscall {}
 
 // XXX find a way to dynamically count syscalls
 
-pub static syscall_table: [Syscall; 60] = [
+pub static SYSCALL_TABLE: [Syscall; 60] = [
     /* 00 */    Syscall(core::ptr::null()),
     /* 01 */    Syscall(sys_exit as *const _),
     /* 02 */    Syscall(sys_close as *const _),
@@ -1425,4 +1425,4 @@ pub static syscall_table: [Syscall; 60] = [
 
 //pub static syscall_cnt: size_t = core::mem::size_of_val(&syscall_table)/core::mem::size_of_val(&syscall_table[0]);
 
-pub static syscall_cnt: size_t = 60;
+pub static SYSCALL_CNT: size_t = 60;

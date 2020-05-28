@@ -33,7 +33,7 @@ pub unsafe fn vm_object_vnode(vnode: *mut Vnode) -> *mut VmObject {
             return core::ptr::null_mut();
         }
 
-        (*vm_object).pager = &mut vnode_pager;
+        (*vm_object).pager = &mut VNODE_PAGER;
         (*vm_object).p = vnode as *mut u8;
 
         (*vnode).vm_object = vm_object;
@@ -49,7 +49,7 @@ struct L {
     page: [u8; PAGE_SIZE],
 }
 
-static __load: L = L { page: [0; PAGE_SIZE] };
+static __LOAD: L = L { page: [0; PAGE_SIZE] };
 
 pub unsafe fn vnode_page_in(vm_object: *mut VmObject, off: off_t) -> *mut VmPage {
     let vm_page = mm_page_alloc();
@@ -63,8 +63,8 @@ pub unsafe fn vnode_page_in(vm_object: *mut VmObject, off: off_t) -> *mut VmPage
 
     let vnode = (*vm_object).p as *mut Vnode;
 
-    mm_page_map(kvm_space.pmap, &__load as *const _ as usize, (*vm_page).paddr, VM_KW as isize);
-    vfs_read(vnode, (*vm_page).off, PAGE_SIZE, &__load.page as *const _ as *mut u8);
+    mm_page_map(kvm_space.pmap, &__LOAD as *const _ as usize, (*vm_page).paddr, VM_KW as isize);
+    vfs_read(vnode, (*vm_page).off, PAGE_SIZE, &__LOAD.page as *const _ as *mut u8);
 
     vm_object_page_insert(vm_object, vm_page);
 
@@ -76,7 +76,7 @@ unsafe fn vnode_page_out(vm_object: *mut VmObject, off: off_t) -> isize {
     return 0;
 }
 
-pub static mut vnode_pager: VmPager = VmPager {
+pub static mut VNODE_PAGER: VmPager = VmPager {
     page_in:  vnode_page_in,
     page_out: vnode_page_out,
 };

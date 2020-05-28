@@ -42,29 +42,29 @@ extern "C" {
     fn x86_lidt(_: usize);
 }
 
-static mut idt: [IdtEntry; 256] = [IdtEntry::empty(); 256];
-static mut idt_pointer: IdtPointer = IdtPointer::empty();
+static mut IDT: [IdtEntry; 256] = [IdtEntry::empty(); 256];
+static mut IDT_POINTER: IdtPointer = IdtPointer::empty();
 
 /* sets interrupt gates in kernel code segment */
 pub unsafe fn x86_idt_gate_set(id: usize, offset: usize) {
-    idt[id].offset_lo  = ((offset >> 0x00) & 0xFFFF) as u16;
-    idt[id].offset_hi  = ((offset >> 0x10) & 0xFFFF) as u16;
+    IDT[id].offset_lo  = ((offset >> 0x00) & 0xFFFF) as u16;
+    IDT[id].offset_hi  = ((offset >> 0x10) & 0xFFFF) as u16;
 
-    idt[id].selector   = 0x8;
-    idt[id].flags      = 0x8E;
+    IDT[id].selector   = 0x8;
+    IDT[id].flags      = 0x8E;
 }
 
 /* sets interrupt gates in user code segment */
 pub unsafe fn x86_idt_gate_user_set(id: usize, offset: usize) {
-    idt[id].offset_lo  = ((offset >> 0x00) & 0xFFFF) as u16;
-    idt[id].offset_hi  = ((offset >> 0x10) & 0xFFFF) as u16;
+    IDT[id].offset_lo  = ((offset >> 0x00) & 0xFFFF) as u16;
+    IDT[id].offset_hi  = ((offset >> 0x10) & 0xFFFF) as u16;
 
-    idt[id].selector   = 0x8;
-    idt[id].flags      = 0xEE;
+    IDT[id].selector   = 0x8;
+    IDT[id].flags      = 0xEE;
 }
 
 pub unsafe fn x86_idt_setup() {
-    idt_pointer.limit = (core::mem::size_of_val(&idt) - 1) as u16;
-    idt_pointer.base  = &idt as *const _ as usize;
-    x86_lidt(&idt_pointer as *const _ as usize);
+    IDT_POINTER.limit = (core::mem::size_of_val(&IDT) - 1) as u16;
+    IDT_POINTER.base  = &IDT as *const _ as usize;
+    x86_lidt(&IDT_POINTER as *const _ as usize);
 }

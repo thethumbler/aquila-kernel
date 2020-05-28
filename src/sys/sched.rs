@@ -5,25 +5,25 @@ use sys::process::*;
 use sys::thread::*;
 use arch::sys::*;
 
-pub static mut ready_queue: Queue<*mut Thread> = Queue::empty();
-pub static mut _curthread: *mut Thread = core::ptr::null_mut();
+pub static mut READY_QUEUE: Queue<*mut Thread> = Queue::empty();
+pub static mut _CURTHREAD: *mut Thread = core::ptr::null_mut();
 
 pub macro curthread {
     () => {
-        crate::sys::sched::_curthread
+        crate::sys::sched::_CURTHREAD
     }
 }
 
 pub macro curproc {
     () => {
-        ((*crate::sys::sched::_curthread).owner)
+        ((*crate::sys::sched::_CURTHREAD).owner)
     }
 }
 
 pub unsafe fn sched_thread_ready(thread: *mut Thread) {
-    let sched_node = ready_queue.enqueue(thread);
+    let sched_node = READY_QUEUE.enqueue(thread);
 
-    (*thread).sched_queue = &mut ready_queue;
+    (*thread).sched_queue = &mut READY_QUEUE;
     (*thread).sched_node  = sched_node;
 }
 
@@ -70,12 +70,12 @@ pub unsafe fn schedule() {
 
     kidle = 0;
 
-    if ready_queue.count() == 0 {
+    if READY_QUEUE.count() == 0 {
         /* no ready threads, idle */
         kernel_idle();
     }
 
-    curthread!() = ready_queue.dequeue().unwrap();
+    curthread!() = READY_QUEUE.dequeue().unwrap();
     (*curthread!()).sched_node = core::ptr::null_mut();
 
     if (*curthread!()).spawned != 0 {

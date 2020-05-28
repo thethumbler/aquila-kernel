@@ -17,7 +17,7 @@ const KERNEL_HEAP_SIZE: usize = 8 * 1024 * 1024;  /* 8 MiB */
 struct PageTable([u32; 1024]);
 
 #[link_section=".boot.bss"]
-static mut _BSP_PD: PageTable = PageTable([0; 1024]);
+static mut BSP_PD: PageTable = PageTable([0; 1024]);
 
 extern "C" {
     static kernel_end: u8;
@@ -32,7 +32,7 @@ const PCD: u32 = 1 << 4;
 struct ScratchArea([u8; 1024 * 1024]);
 
 #[link_section=".boot.bss"]
-static mut scratch: ScratchArea = ScratchArea([0; 1024 * 1024]); /* 1 MiB scratch area */
+static mut SCRATCH: ScratchArea = ScratchArea([0; 1024 * 1024]); /* 1 MiB scratch area */
 
 #[inline]
 #[link_section=".boot.text"]
@@ -47,31 +47,31 @@ unsafe fn enable_paging(page_directory: usize) {
 unsafe fn switch_to_higher_half() {
     /* zero out paging structure */
     for i in 0..1024 {
-        core::ptr::write_volatile(&mut _BSP_PD.0[i], 0);
+        core::ptr::write_volatile(&mut BSP_PD.0[i], 0);
     }
 
     /* entries count required to map the kernel */
     let entries = (&kernel_end as *const u8 as usize + KERNEL_HEAP_SIZE + TABLE_MASK) / TABLE_SIZE;
 
-    let mut _BSP_PT = &scratch as *const _ as *mut u32;
+    let mut bsp_pt = &SCRATCH as *const _ as *mut u32;
 
     /* identity map pages */
     for i in 0..entries * 1024 {
-        *_BSP_PT.offset(i as isize) = (i * PAGE_SIZE) as u32 | P | RW;
+        *bsp_pt.offset(i as isize) = (i * PAGE_SIZE) as u32 | P | RW;
     }
 
     /* map the lower-half */
     for i in 0..entries {
-        _BSP_PD.0[i] = (_BSP_PT as *const u8 as u32 + (i * PAGE_SIZE) as u32) | P | RW;
+        BSP_PD.0[i] = (bsp_pt as *const u8 as u32 + (i * PAGE_SIZE) as u32) | P | RW;
     }
 
     /* map the upper-half */
     for i in 0..entries {
-        _BSP_PD.0[768 + i] = (_BSP_PT as *const u8 as u32 + (i * PAGE_SIZE) as u32) | P | RW;
+        BSP_PD.0[768 + i] = (bsp_pt as *const u8 as u32 + (i * PAGE_SIZE) as u32) | P | RW;
     }
 
     /* enable paging using bootstrap processor page directory */
-    enable_paging(&_BSP_PD as *const _ as usize);
+    enable_paging(&BSP_PD as *const _ as usize);
 }
 
 #[no_mangle]
@@ -89,7 +89,7 @@ pub unsafe extern "C" fn x86_bootstrap() {
 
     /* why would we ever get back here? however we should be precautious */
     loop {
-        asm!("hlt;");
+        llvm_asm!("hlt;");
     }
 }
 

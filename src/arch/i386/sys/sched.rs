@@ -3,11 +3,11 @@ use prelude::*;
 use sys::sched::*;
 use mm::*;
 
-use arch::i386::platform::pc::init::platform_timer_setup;
-use arch::i386::include::cpu::cpu::X86Regs;
-use arch::i386::cpu::gdt::x86_kernel_stack_set;
-use arch::i386::cpu::init::virtual_address;
-use arch::i386::include::core::arch::X86Thread;
+use arch::platform::pc::init::platform_timer_setup;
+use arch::include::cpu::cpu::X86Regs;
+use arch::cpu::gdt::x86_kernel_stack_set;
+use arch::cpu::init::virtual_address;
+use arch::include::core::arch::X86Thread;
 
 extern "C" {
     fn x86_read_ip() -> usize;
@@ -15,22 +15,22 @@ extern "C" {
     fn x86_sleep();
 }
 
-static mut timer_period: u32 = 0;
-static mut timer_ticks: u64 = 0;
+static mut TIMER_PERIOD: u32 = 0;
+static mut TIMER_TICKS: u64 = 0;
 
 pub unsafe fn arch_rtime_ns() -> u64 {
-    return timer_ticks * (timer_period as u64);
+    return TIMER_TICKS * (TIMER_PERIOD as u64);
 }
 
 pub unsafe fn arch_rtime_us() -> u64 {
-    return timer_ticks * (timer_period as u64) / 1000;
+    return TIMER_TICKS * (TIMER_PERIOD as u64) / 1000;
 }
 
 pub unsafe fn arch_rtime_ms() -> u64 {
-    return timer_ticks * (timer_period as u64) / 1000000;
+    return TIMER_TICKS * (TIMER_PERIOD as u64) / 1000000;
 }
 
-static first_measured_time: u64 = 0;
+static FIRST_MEASURED_TIME: u64 = 0;
 
 unsafe fn x86_sched_handler(r: *const X86Regs) {
     /* we check time every 2^16 ticks */
@@ -60,7 +60,7 @@ unsafe fn x86_sched_handler(r: *const X86Regs) {
     }
     */
 
-    timer_ticks += 1;
+    TIMER_TICKS += 1;
 
     if kidle == 0 {
         let arch = (*curthread!()).arch as *mut X86Thread;
@@ -68,8 +68,8 @@ unsafe fn x86_sched_handler(r: *const X86Regs) {
 
         let (ip, sp, bp);    
 
-        asm!("mov %esp, $0":"=r"(sp)); /* read esp */
-        asm!("mov %ebp, $0":"=r"(bp)); /* read ebp */
+        llvm_asm!("mov %esp, $0":"=r"(sp)); /* read esp */
+        llvm_asm!("mov %ebp, $0":"=r"(bp)); /* read ebp */
         ip = x86_read_ip();
 
         if (ip == -1isize as usize) {
@@ -86,23 +86,23 @@ unsafe fn x86_sched_handler(r: *const X86Regs) {
 }
 
 pub unsafe fn arch_sched_init() {
-    timer_period = platform_timer_setup(2000000, x86_sched_handler);
+    TIMER_PERIOD = platform_timer_setup(2000000, x86_sched_handler);
 }
 
 unsafe fn __arch_idle() {
     loop {
-        asm!("sti; hlt; cli;");
+        llvm_asm!("sti; hlt; cli;");
     }
 }
 
-static __idle_stack: [u8; 8192] = [0; 8192];
+static __IDLE_STACK: [u8; 8192] = [0; 8192];
 
 pub unsafe fn arch_idle() {
     curthread!() = core::ptr::null_mut();
 
     let esp = virtual_address(0x100000usize) as *const u8 as usize;
     x86_kernel_stack_set(esp);
-    let stack = &__idle_stack as *const _ as usize + 8192;
+    let stack = &__IDLE_STACK as *const _ as usize + 8192;
     //extern void x86_goto(uintptr_t eip, uintptr_t ebp, uintptr_t esp) __attribute__((noreturn));
     x86_goto(__arch_idle as *const u8 as usize, stack, stack);
 }
@@ -117,7 +117,7 @@ unsafe fn __arch_cur_thread_kill() {
 }
 
 pub unsafe fn arch_cur_thread_kill() {
-    let stack = &__idle_stack as *const _ as usize + 8192;
+    let stack = &__IDLE_STACK as *const _ as usize + 8192;
 
     //extern void x86_goto(uintptr_t eip, uintptr_t ebp, uintptr_t esp) __attribute__((noreturn));
     x86_goto(__arch_cur_thread_kill as usize, stack, stack);

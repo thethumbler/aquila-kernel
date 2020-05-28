@@ -1,6 +1,7 @@
 use prelude::*;
 
-use crate::kern::kargs::kargs_get;
+use kern::kargs::kargs_get;
+use arch::i386::earlycon::uart::*;
 
 #[repr(C)]
 pub struct EarlyConsole {
@@ -23,25 +24,19 @@ impl EarlyConsole {
     }
 }
 
-static mut earlycon: *mut EarlyConsole = core::ptr::null_mut();
-
-extern "C" {
-    static mut earlycon_uart: EarlyConsole;
-    //static mut earlycon_vga: EarlyConsole;
-    //static mut earlycon_fb: EarlyConsole;
-}
+static mut EARLYCON: *mut EarlyConsole = core::ptr::null_mut();
 
 pub unsafe fn earlycon_puts(s: *const u8) -> isize {
-    return (*earlycon).puts(s);
+    return (*EARLYCON).puts(s);
 }
 
 pub unsafe fn earlycon_putc(c: u8) -> isize {
-    return (*earlycon).putc(c);
+    return (*EARLYCON).putc(c);
 }
 
 pub unsafe fn earlycon_init() {
-    earlycon = &mut earlycon_uart;
-    (*earlycon).init();
+    EARLYCON = &mut EARLYCON_UART;
+    (*EARLYCON).init();
 }
 
 pub unsafe fn earlycon_reinit() {
@@ -49,7 +44,7 @@ pub unsafe fn earlycon_reinit() {
 
     if kargs_get("earlycon\0".as_bytes().as_ptr(), &mut arg_earlycon) == 0 {
         if strcmp(arg_earlycon, "ttyS0\0".as_bytes().as_ptr()) == 0 {
-            earlycon = &mut earlycon_uart;
+            EARLYCON = &mut EARLYCON_UART;
         }
         /*else if strcmp(arg_earlycon, "vga\0".as_bytes().as_ptr()) == 0 {
             earlycon = &mut earlycon_vga;
@@ -61,6 +56,6 @@ pub unsafe fn earlycon_reinit() {
         */
     }
 
-    (*earlycon).init();
+    (*EARLYCON).init();
 }
 

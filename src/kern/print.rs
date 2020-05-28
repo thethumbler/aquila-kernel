@@ -17,13 +17,13 @@ impl core::fmt::Write for Console {
     }
 }
 
-pub static mut rconsole: Console = Console {};
+pub static mut RCONSOLE: Console = Console {};
 
 #[macro_export]
 macro_rules! print {
     ($($arg:tt)*) => {
         unsafe {
-            core::fmt::write(&mut $crate::kern::print::rconsole, core::format_args!($($arg)*)).unwrap()
+            core::fmt::write(&mut $crate::kern::print::RCONSOLE, core::format_args!($($arg)*)).unwrap()
         }
     };
 }

@@ -153,7 +153,7 @@ pub struct Mountpoint {
 }
 
 /** list of registered filesystems */
-pub static mut registered_fs: *mut FilesystemList = core::ptr::null_mut();
+pub static mut REGISTERED_FS: *mut FilesystemList = core::ptr::null_mut();
 
 /* vfs mountpoints graph */
 pub struct VfsNode {
@@ -165,7 +165,7 @@ pub struct VfsNode {
     pub vnode: *mut Vnode,
 }
 
-pub static mut vfs_graph: VfsNode = VfsNode {
+pub static mut VFS_GRAPH: VfsNode = VfsNode {
     name: "/",
     children: core::ptr::null_mut(),
     next: core::ptr::null_mut(),
@@ -175,13 +175,13 @@ pub static mut vfs_graph: VfsNode = VfsNode {
 
 /* ================== VFS Graph helpers ================== */
 
-pub static mut vfs_root: *mut Vnode = core::ptr::null_mut();
+pub static mut VFS_ROOT: *mut Vnode = core::ptr::null_mut();
 
 pub unsafe fn vfs_mount_root(vnode: *mut Vnode) -> isize {
     /* TODO Flush mountpoints */
-    vfs_root = vnode;
-    vfs_graph.vnode = vnode;
-    vfs_graph.children = core::ptr::null_mut();  /* XXX */
+    VFS_ROOT = vnode;
+    VFS_GRAPH.vnode = vnode;
+    VFS_GRAPH.children = core::ptr::null_mut();  /* XXX */
 
     return 0;
 }
@@ -291,7 +291,7 @@ pub unsafe fn vfs_get_mountpoint(tokens: *mut *mut u8) -> *mut VfsPath {
     let mut path = kmalloc(core::mem::size_of::<VfsPath>(), &M_VFS_PATH, 0) as *mut VfsPath;
     (*path).tokens = tokens;
 
-    let mut cur_node = &vfs_graph as *const _ as *mut VfsNode;
+    let mut cur_node = &VFS_GRAPH as *const _ as *mut VfsNode;
     let mut last_target_node = cur_node;
 
     let mut token_i = 0;
@@ -361,7 +361,7 @@ pub unsafe fn vfs_bind(path: *const u8, target: *mut Vnode) -> isize {
     
     /* FIXME: should check for existence */
 
-    let mut cur_node = &vfs_graph as *const _ as *mut VfsNode;
+    let mut cur_node = &VFS_GRAPH as *const _ as *mut VfsNode;
 
     let mut token_p = tokens; 
     while !(*token_p).is_null() {
@@ -433,8 +433,8 @@ pub unsafe fn vfs_install(fs: *mut Filesystem) -> isize {
     (*node).name = (*fs).name;
     (*node).fs   = fs;
 
-    (*node).next = registered_fs;
-    registered_fs = node;
+    (*node).next = REGISTERED_FS;
+    REGISTERED_FS = node;
 
     //vfs_log(LOG_INFO, "registered filesystem %s\n", fs->name);
     print!("vfs: registered filesystem {}\n", (*fs).name);

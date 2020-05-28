@@ -1,21 +1,19 @@
 use prelude::*;
 
 use mm::*;
-use crate::arch::i386::sys::execve::tlb_flush;
-use crate::arch::i386::include::cpu::cpu::read_cr3;
-use crate::arch::i386::cpu::init::{local_address, virtual_address};
-
-use crate::{malloc_define, print, page_align};
+use crate::arch::sys::execve::tlb_flush;
+use crate::arch::include::cpu::cpu::read_cr3;
+use crate::arch::cpu::init::{local_address, virtual_address};
 
 malloc_define!(M_PMAP, "pmap\0", "physical memory map structure\0");
 
-static mut cur_pmap: *mut PhysicalMap = core::ptr::null_mut();
+static mut CUR_PMAP: *mut PhysicalMap = core::ptr::null_mut();
 
 #[repr(align(4096))]
 struct PageTable([u32; 1024]);
 
-static mut bootstrap_processor_table: *mut u32 = core::ptr::null_mut();
-static mut last_page_table: PageTable = PageTable([0; 1024]);
+static mut BOOTSTRAP_PROCESSOR_TABLE: *mut u32 = core::ptr::null_mut();
+static mut LAST_PAGE_TABLE: PageTable = PageTable([0; 1024]);
 
 #[repr(C)]
 pub struct PhysicalMap {
@@ -142,7 +140,7 @@ unsafe fn copy_virtual_to_physical(phys_dest: paddr_t, virt_src: usize, n: size_
 }
 
 unsafe fn tlb_invalidate_page(virt: usize) {
-    asm!("invlpg (%eax)"::"{eax}"(virt));
+    llvm_asm!("invlpg (%eax)"::"{eax}"(virt));
 }
 
 unsafe fn frame_get() -> usize {
@@ -175,7 +173,7 @@ unsafe fn frame_release(frame: usize) {
 }
 
 unsafe fn frame_mount(paddr: usize) -> usize {
-    let mut prev = core::ptr::read_volatile((&last_page_table as *const _ as *mut u32).offset(1023)) as usize;
+    let mut prev = core::ptr::read_volatile((&LAST_PAGE_TABLE as *const _ as *mut u32).offset(1023)) as usize;
     prev &= !PAGE_MASK;
 
     if paddr == 0 {
@@ -188,7 +186,7 @@ unsafe fn frame_mount(paddr: usize) -> usize {
 
     let page = paddr as u32 | PG_PRESENT | PG_WRITE;
 
-    core::ptr::write_volatile((&last_page_table as *const _ as *mut u32).offset(1023), page);
+    core::ptr::write_volatile((&LAST_PAGE_TABLE as *const _ as *mut u32).offset(1023), page);
     tlb_invalidate_page(MOUNT_ADDR);
 
     return prev;
@@ -330,46 +328,46 @@ pub unsafe fn pmap_switch(pmap: *mut PhysicalMap) -> *mut PhysicalMap {
         panic!("pmap?");
     }
 
-    let ret = cur_pmap;
+    let ret = CUR_PMAP;
 
-    if !cur_pmap.is_null() && (*cur_pmap).map == (*pmap).map {
-        cur_pmap == pmap;
+    if !CUR_PMAP.is_null() && (*CUR_PMAP).map == (*pmap).map {
+        CUR_PMAP = pmap;
         return ret;
     }
 
-    if !cur_pmap.is_null() {
+    if !CUR_PMAP.is_null() {
         /* store current directory mapping in old_dir */
-        copy_virtual_to_physical((*cur_pmap).map, bootstrap_processor_table as usize, 768 * 4);
+        copy_virtual_to_physical((*CUR_PMAP).map, BOOTSTRAP_PROCESSOR_TABLE as usize, 768 * 4);
     }
 
-    copy_physical_to_virtual(bootstrap_processor_table as usize, (*pmap).map, 768 * 4);
-    cur_pmap = pmap;
+    copy_physical_to_virtual(BOOTSTRAP_PROCESSOR_TABLE as usize, (*pmap).map, 768 * 4);
+    CUR_PMAP = pmap;
     tlb_flush();
 
     return ret;
 }
 
-static mut k_pmap: PhysicalMap = PhysicalMap { map: 0, refcnt: 0 };
+static mut K_PMAP: PhysicalMap = PhysicalMap { map: 0, refcnt: 0 };
 
 unsafe fn setup_i386_paging() {
     print!("x86: setting up 32-bit paging\n");
     let __cur_pd = read_cr3() & !PAGE_MASK;
 
-    bootstrap_processor_table = virtual_address(__cur_pd);
-    *bootstrap_processor_table.offset(1023) = local_address(bootstrap_processor_table as usize) as *const u8 as usize as u32 | PG_WRITE | PG_PRESENT;
-    *bootstrap_processor_table.offset(1022) = local_address(&last_page_table as *const _ as usize) as *const u8 as usize as u32 | PG_PRESENT | PG_WRITE;
+    BOOTSTRAP_PROCESSOR_TABLE = virtual_address(__cur_pd);
+    *BOOTSTRAP_PROCESSOR_TABLE.offset(1023) = local_address(BOOTSTRAP_PROCESSOR_TABLE as usize) as *const u8 as usize as u32 | PG_WRITE | PG_PRESENT;
+    *BOOTSTRAP_PROCESSOR_TABLE.offset(1022) = local_address(&LAST_PAGE_TABLE as *const _ as usize) as *const u8 as usize as u32 | PG_PRESENT | PG_WRITE;
 
     /* unmap lower half */
     let mut i = 0;
-    while *bootstrap_processor_table.offset(i) != 0 {
-        *bootstrap_processor_table.offset(i) = 0;
+    while *BOOTSTRAP_PROCESSOR_TABLE.offset(i) != 0 {
+        *BOOTSTRAP_PROCESSOR_TABLE.offset(i) = 0;
         i += 1;
     }
 
     tlb_flush();
 
-    k_pmap.map = __cur_pd;
-    kvm_space.pmap = &mut k_pmap;
+    K_PMAP.map = __cur_pd;
+    kvm_space.pmap = &mut K_PMAP;
 }
 
 /*
@@ -403,8 +401,8 @@ unsafe fn pmap_alloc() -> *mut PhysicalMap {
 }
 
 unsafe fn pmap_release(pmap: *mut PhysicalMap) {
-    if pmap == cur_pmap {
-        pmap_switch(&mut k_pmap);
+    if pmap == CUR_PMAP {
+        pmap_switch(&mut K_PMAP);
     }
 
     if (*pmap).map != 0 {
@@ -416,7 +414,7 @@ unsafe fn pmap_release(pmap: *mut PhysicalMap) {
 
 pub unsafe fn pmap_init() {
     setup_i386_paging();
-    cur_pmap = &mut k_pmap;
+    CUR_PMAP = &mut K_PMAP;
 }
 
 pub unsafe fn pmap_create() -> *mut PhysicalMap {
@@ -496,7 +494,7 @@ unsafe fn table_remove_all(table: paddr_t) {
 }
 
 pub unsafe fn pmap_remove_all(pmap: *mut PhysicalMap) {
-    let old_map = pmap_switch(&mut k_pmap);
+    let old_map = pmap_switch(&mut K_PMAP);
     let base = (*pmap).map;
 
     let old_mount = frame_mount(base);
@@ -547,11 +545,11 @@ pub unsafe fn pmap_update(pmap: *mut PhysicalMap) {
 }
 
 struct CopyBuffer([u8; PAGE_SIZE]);
-static mut __copy_buf: CopyBuffer = CopyBuffer([0; PAGE_SIZE]);
+static mut __COPY_BUF: CopyBuffer = CopyBuffer([0; PAGE_SIZE]);
 
 pub unsafe fn pmap_page_copy(src: paddr_t, dst: paddr_t) {
-    copy_physical_to_virtual(&__copy_buf as *const _ as usize, src, PAGE_SIZE);
-    copy_virtual_to_physical(dst, &__copy_buf as *const _ as usize, PAGE_SIZE);
+    copy_physical_to_virtual(&__COPY_BUF as *const _ as usize, src, PAGE_SIZE);
+    copy_virtual_to_physical(dst, &__COPY_BUF as *const _ as usize, PAGE_SIZE);
     return;
 }
 

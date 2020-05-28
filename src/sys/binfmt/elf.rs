@@ -6,11 +6,11 @@ use mm::*;
 
 use crate::{page_align, page_round};
 
-type elf32_sword = i32;
-type elf32_word  = u32;
-type elf32_addr  = u32; 
-type elf32_off   = u32; 
-type elf32_half  = u16; 
+type Elf32Sword = i32;
+type Elf32Word  = u32;
+type Elf32Addr  = u32; 
+type Elf32Off   = u32; 
+type Elf32Half  = u16; 
 
 pub const ET_NONE     : usize = 0x0000;
 pub const ET_REL      : usize = 0x0001;
@@ -59,22 +59,22 @@ pub const SHN_ABS         : usize = 0xfff1;
 pub const SHN_COMMON      : usize = 0xfff2;
 pub const SHN_HIRESERVE   : usize = 0xffff;
 
-pub const SHT_NULL        : elf32_word = 0;
-pub const SHT_PROGBITS    : elf32_word = 1;
-pub const SHT_SYMTAB      : elf32_word = 2;
-pub const SHT_STRTAB      : elf32_word = 3;
-pub const SHT_RELA        : elf32_word = 4;
-pub const SHT_HASH        : elf32_word = 5;
-pub const SHT_DYNAMIC     : elf32_word = 6;
-pub const SHT_NOTE        : elf32_word = 7;
-pub const SHT_NOBITS      : elf32_word = 8;
-pub const SHT_REL         : elf32_word = 9;
-pub const SHT_SHLIB       : elf32_word = 10;
-pub const SHT_DYNSYM      : elf32_word = 11;
-pub const SHT_LOPROC      : elf32_word = 0x70000000;
-pub const SHT_HIPROC      : elf32_word = 0x7fffffff;
-pub const SHT_LOUSER      : elf32_word = 0x80000000;
-pub const SHT_HIUSER      : elf32_word = 0xffffffff;
+pub const SHT_NULL        : Elf32Word = 0;
+pub const SHT_PROGBITS    : Elf32Word = 1;
+pub const SHT_SYMTAB      : Elf32Word = 2;
+pub const SHT_STRTAB      : Elf32Word = 3;
+pub const SHT_RELA        : Elf32Word = 4;
+pub const SHT_HASH        : Elf32Word = 5;
+pub const SHT_DYNAMIC     : Elf32Word = 6;
+pub const SHT_NOTE        : Elf32Word = 7;
+pub const SHT_NOBITS      : Elf32Word = 8;
+pub const SHT_REL         : Elf32Word = 9;
+pub const SHT_SHLIB       : Elf32Word = 10;
+pub const SHT_DYNSYM      : Elf32Word = 11;
+pub const SHT_LOPROC      : Elf32Word = 0x70000000;
+pub const SHT_HIPROC      : Elf32Word = 0x7fffffff;
+pub const SHT_LOUSER      : Elf32Word = 0x80000000;
+pub const SHT_HIUSER      : Elf32Word = 0xffffffff;
 
 pub const DT_NULL     : usize = 0;
 pub const DT_NEEDED   : usize = 1;
@@ -118,15 +118,15 @@ pub const PF_W        : usize = 0x2;
 pub const PF_R        : usize = 0x4;
 pub const PF_MASKPROC : usize = 0xf0000000;
 
-pub fn ELF32_ST_BIND(st_info: u8) -> u8 {
+pub fn elf32_st_bind(st_info: u8) -> u8 {
     st_info >> 4
 }
 
-pub fn ELF32_ST_TYPE(st_info: u8) -> u8 {
+pub fn elf32_st_type(st_info: u8) -> u8 {
     st_info & 0xf
 }
 
-pub fn ELF32_ST_INFO(bind: u8, r#type: u8) -> u8 {
+pub fn elf32_st_info(bind: u8, r#type: u8) -> u8 {
     (bind << 4) + (r#type & 0xf)
 }
 
@@ -148,65 +148,65 @@ pub const STT_HIPROC  : u8 = 15;
 #[repr(C)]
 pub struct Elf32Header {
     pub e_ident     : [u8; EI_NIDENT],
-    pub e_type      : elf32_half,
-    pub e_machine   : elf32_half,
-    pub e_version   : elf32_word,
-    pub e_entry     : elf32_addr,
-    pub e_phoff     : elf32_off,
-    pub e_shoff     : elf32_off,
-    pub e_flags     : elf32_word,
-    pub e_ehsize    : elf32_half,
-    pub e_phentsize : elf32_half,
-    pub e_phnum     : elf32_half,
-    pub e_shentsize : elf32_half,
-    pub e_shnum     : elf32_half,
-    pub e_shstrndx  : elf32_half,
+    pub e_type      : Elf32Half,
+    pub e_machine   : Elf32Half,
+    pub e_version   : Elf32Word,
+    pub e_entry     : Elf32Addr,
+    pub e_phoff     : Elf32Off,
+    pub e_shoff     : Elf32Off,
+    pub e_flags     : Elf32Word,
+    pub e_ehsize    : Elf32Half,
+    pub e_phentsize : Elf32Half,
+    pub e_phnum     : Elf32Half,
+    pub e_shentsize : Elf32Half,
+    pub e_shnum     : Elf32Half,
+    pub e_shstrndx  : Elf32Half,
 }
 
 /** elf32 section header */
 #[repr(C)]
 pub struct Elf32SectionHeader {
-    pub sh_name       : elf32_word,
-    pub sh_type       : elf32_word,
-    pub sh_flags      : elf32_word,
-    pub sh_addr       : elf32_addr,
-    pub sh_offset     : elf32_off,
-    pub sh_size       : elf32_word,
-    pub sh_link       : elf32_word,
-    pub sh_info       : elf32_word,
-    pub sh_addralign  : elf32_word,
-    pub sh_entsize    : elf32_word,
+    pub sh_name       : Elf32Word,
+    pub sh_type       : Elf32Word,
+    pub sh_flags      : Elf32Word,
+    pub sh_addr       : Elf32Addr,
+    pub sh_offset     : Elf32Off,
+    pub sh_size       : Elf32Word,
+    pub sh_link       : Elf32Word,
+    pub sh_info       : Elf32Word,
+    pub sh_addralign  : Elf32Word,
+    pub sh_entsize    : Elf32Word,
 }
 
 /** elf32 symbol */
 #[repr(C)]
 pub struct Elf32Symbol {
-    pub st_name  : elf32_word,
-    pub st_value : elf32_word,
-    pub st_size  : elf32_word,
+    pub st_name  : Elf32Word,
+    pub st_value : Elf32Word,
+    pub st_size  : Elf32Word,
     pub st_info  : u8,
     pub st_other : u8,
-    pub st_shndx : elf32_half,
+    pub st_shndx : Elf32Half,
 }
 
 /** elf32 program header */
 #[repr(C)]
 pub struct Elf32ProgramHeader {
-    pub p_type   : elf32_word,
-    pub p_offset : elf32_off,
-    pub p_vaddr  : elf32_addr,
-    pub p_paddr  : elf32_addr,
-    pub p_filesz : elf32_word,
-    pub p_memsz  : elf32_word,
-    pub p_flags  : elf32_word,
-    pub p_align  : elf32_word,
+    pub p_type   : Elf32Word,
+    pub p_offset : Elf32Off,
+    pub p_vaddr  : Elf32Addr,
+    pub p_paddr  : Elf32Addr,
+    pub p_filesz : Elf32Word,
+    pub p_memsz  : Elf32Word,
+    pub p_flags  : Elf32Word,
+    pub p_align  : Elf32Word,
 }
 
 /** elf32 dynamic entry */
 #[repr(C)]
 pub struct Elf32Dynamic {
-    pub d_tag : elf32_sword,
-    pub d_val : elf32_addr,
+    pub d_tag : Elf32Sword,
+    pub d_val : Elf32Addr,
 }
 
 unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {

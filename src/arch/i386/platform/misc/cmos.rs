@@ -14,11 +14,11 @@ const RTC_SA:  u8 = 0x0A;     /* status register a */
 const RTC_SB:  u8 = 0x0B;     /* status register b */
 const RTC_BIN: u8 = 0x04;     /* binary mode */
 
-static mut cmos: IOAddr = IOAddr::empty();
+static mut CMOS: IOAddr = IOAddr::empty();
 
 unsafe fn cmos_reg_read(reg: u8) -> u8 {
-    cmos.out8(0, (1 << 7) | (reg));
-    return cmos.in8(1);
+    CMOS.out8(0, (1 << 7) | (reg));
+    return CMOS.in8(1);
 }
 
 #[repr(C)]
@@ -94,8 +94,8 @@ pub unsafe fn arch_time_get(ts: *mut TimeSpec) -> isize {
 }
 
 pub unsafe fn x86_cmos_setup(ioaddr: *mut IOAddr) -> isize {
-    cmos = *ioaddr;
-    print!("cmos: initializing [{:p} ({})]\n", cmos.addr as *const u8, cmos.type_str());
+    CMOS = *ioaddr;
+    print!("cmos: initializing [{:p} ({})]\n", CMOS.addr as *const u8, CMOS.type_str());
 
     return 0;
 }

@@ -22,7 +22,7 @@ pub unsafe fn arch_stack_trace() {
 
     let mut stk: *const StackFrame;
 
-    asm!("movl %ebp, $0":"=r"(stk));
+    llvm_asm!("movl %ebp, $0":"=r"(stk));
 
     print!("stack trace:\n");
 
@@ -37,7 +37,7 @@ pub unsafe fn arch_stack_trace() {
         let mut found = false;
 
         for i in 0..(*__kboot).symnum {
-            if (ELF32_ST_TYPE((*sym).st_info) == STT_FUNC) {
+            if (elf32_st_type((*sym).st_info) == STT_FUNC) {
                 if (*stk).ip > (*sym).st_value as usize && (*stk).ip < ((*sym).st_value + (*sym).st_size) as usize {
                     found = true;
                     break;

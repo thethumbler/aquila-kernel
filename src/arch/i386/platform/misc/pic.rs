@@ -1,15 +1,14 @@
 use prelude::*;
 
-use arch::i386::cpu::idt::x86_idt_gate_set;
-use crate::arch::i386::include::cpu::io::IOAddr;
-use crate::arch::i386::include::cpu::cpu::X86Regs;
-use crate::{print};
+use arch::cpu::idt::x86_idt_gate_set;
+use arch::include::cpu::io::IOAddr;
+use arch::include::cpu::cpu::X86Regs;
 
 pub const PIC_CMD:  usize = 0x00;
 pub const PIC_DATA: usize = 0x01;
 
-static mut master: IOAddr = IOAddr::empty();
-static mut slave:  IOAddr = IOAddr::empty();
+static mut MASTER: IOAddr = IOAddr::empty();
+static mut SLAVE:  IOAddr = IOAddr::empty();
 
 /*
  * ```
@@ -78,15 +77,15 @@ const ICW3_SLAVE: u8 = 0x02;
 const ICW4: u8 = 0x01;
 
 /* The mask value currently on slave:master */
-static mut pic_mask: u16 = 0xFFFF;
+static mut PIC_MASK: u16 = 0xFFFF;
 
 pub unsafe fn x86_irq_mask(irq: usize) {
     if (irq < 8) {  /* Master */
-        pic_mask |= 1 << irq;
-        master.out8(PIC_DATA, (pic_mask & 0xFF) as u8);
+        PIC_MASK |= 1 << irq;
+        MASTER.out8(PIC_DATA, (PIC_MASK & 0xFF) as u8);
     } else if (irq < 16) {  /* Slave */
-        pic_mask |= 1 << irq;
-        slave.out8(PIC_DATA, ((pic_mask >> 8) & 0xFF) as u8);
+        PIC_MASK |= 1 << irq;
+        SLAVE.out8(PIC_DATA, ((PIC_MASK >> 8) & 0xFF) as u8);
     } else {
         panic!("Invalid IRQ number");
     }
@@ -94,12 +93,12 @@ pub unsafe fn x86_irq_mask(irq: usize) {
 
 pub unsafe fn x86_irq_unmask(irq: usize) {
     if (irq < 8) {  /* Master */
-        pic_mask &= !(1 << irq);
-        master.out8(PIC_DATA, (pic_mask & 0xFF) as u8);
+        PIC_MASK &= !(1 << irq);
+        MASTER.out8(PIC_DATA, (PIC_MASK & 0xFF) as u8);
     } else if (irq < 16) {  /* Slave */
-        pic_mask &= !(1 << irq);
-        pic_mask &= !(1 << 2);  /* Unmask slave */
-        slave.out8(PIC_DATA, ((pic_mask >> 8) & 0xFF) as u8);
+        PIC_MASK &= !(1 << irq);
+        PIC_MASK &= !(1 << 2);  /* Unmask slave */
+        SLAVE.out8(PIC_DATA, ((PIC_MASK >> 8) & 0xFF) as u8);
     } else {
         panic!("Invalid IRQ number");
     }
@@ -111,14 +110,14 @@ unsafe fn x86_irq_remap() {
      * numbers so as not to conflict with CPU exceptions
      */
 
-    master.out8(PIC_CMD,  ICW1);
-    slave.out8(PIC_CMD,  ICW1);
-    master.out8(PIC_DATA, ICW2_MASTER);
-    slave.out8(PIC_DATA, ICW2_SLAVE);
-    master.out8(PIC_DATA, ICW3_MASTER);
-    slave.out8(PIC_DATA, ICW3_SLAVE);
-    master.out8(PIC_DATA, ICW4);
-    slave.out8(PIC_DATA, ICW4);
+    MASTER.out8(PIC_CMD,  ICW1);
+    SLAVE.out8(PIC_CMD,  ICW1);
+    MASTER.out8(PIC_DATA, ICW2_MASTER);
+    SLAVE.out8(PIC_DATA, ICW2_SLAVE);
+    MASTER.out8(PIC_DATA, ICW3_MASTER);
+    SLAVE.out8(PIC_DATA, ICW3_SLAVE);
+    MASTER.out8(PIC_DATA, ICW4);
+    SLAVE.out8(PIC_DATA, ICW4);
 }
 
 extern "C" {
@@ -142,19 +141,19 @@ extern "C" {
     static __x86_isr_int_num: u32;
 }
 
-static mut irq_handlers: [Option<unsafe fn(_: *const X86Regs)>; 16] = [None; 16];
+static mut IRQ_HANDLERS: [Option<unsafe fn(_: *const X86Regs)>; 16] = [None; 16];
 
 pub unsafe fn x86_irq_handler_install(irq: usize, handler: unsafe fn(_: *const X86Regs)) {
     if (irq < 16) {
         x86_irq_unmask(irq);
-        irq_handlers[irq] = Some(handler);
+        IRQ_HANDLERS[irq] = Some(handler);
     }
 }
 
 pub unsafe fn x86_irq_handler_uninstall(irq: usize) {
     if (irq < 16) {
         x86_irq_mask(irq);
-        irq_handlers[irq] = None;
+        IRQ_HANDLERS[irq] = None;
     }
 }
 
@@ -162,10 +161,10 @@ const IRQ_ACK: u8 = 0x20;
 unsafe fn x86_irq_ack(irq: usize) {
     if irq > 7 {
         /* IRQ fired from the Slave PIC */
-        slave.out8(PIC_CMD, IRQ_ACK);
+        SLAVE.out8(PIC_CMD, IRQ_ACK);
     }
 
-    master.out8(PIC_CMD, IRQ_ACK);
+    MASTER.out8(PIC_CMD, IRQ_ACK);
 }
 
 #[no_mangle]
@@ -177,7 +176,7 @@ pub unsafe extern "C" fn __x86_irq_handler(r: *const X86Regs) {
         /* Out of range */
         handler = None;
     } else {
-        handler = irq_handlers[(__x86_isr_int_num - 32) as usize];
+        handler = IRQ_HANDLERS[(__x86_isr_int_num - 32) as usize];
     }
 
     x86_irq_ack((__x86_isr_int_num - 32) as usize);
@@ -208,13 +207,13 @@ unsafe fn x86_irq_gates_setup() {
 
 unsafe fn x86_pic_probe() -> isize {
     /* mask all slave irqs */
-    slave.out8(PIC_DATA, 0xFF);
+    SLAVE.out8(PIC_DATA, 0xFF);
 
     /* mask all master irqs -- except slave cascade */
-    master.out8(PIC_DATA, 0xDF);
+    MASTER.out8(PIC_DATA, 0xDF);
 
     /* check if there is a devices listening to port */
-    if master.in8(PIC_DATA) != 0xDF {
+    if MASTER.in8(PIC_DATA) != 0xDF {
         return -1;
     }
 
@@ -223,14 +222,14 @@ unsafe fn x86_pic_probe() -> isize {
 
 pub unsafe fn x86_pic_disable() {
     /* done by masking all irqs */
-    slave.out8(PIC_DATA, 0xFF);
-    master.out8(PIC_DATA, 0xFF);
+    SLAVE.out8(PIC_DATA, 0xFF);
+    MASTER.out8(PIC_DATA, 0xFF);
 }
 
 #[no_mangle]
 pub unsafe fn x86_pic_setup(_master: *const IOAddr, _slave: *const IOAddr) -> isize {
-    master = *_master;
-    slave  = *_slave;
+    MASTER = *_master;
+    SLAVE  = *_slave;
 
     if (x86_pic_probe() != 0) {
         print!("i8259: controller not found\n");
@@ -238,8 +237,8 @@ pub unsafe fn x86_pic_setup(_master: *const IOAddr, _slave: *const IOAddr) -> is
     }
 
     print!("i8259: initializing [master: {:p} ({}), salve: {:p} ({})]\n",
-            master.addr as *const u8, master.type_str(),
-            slave.addr  as *const u8, slave.type_str());
+            MASTER.addr as *const u8, MASTER.type_str(),
+            SLAVE.addr  as *const u8, SLAVE.type_str());
 
     /* initialize */
     x86_irq_remap();

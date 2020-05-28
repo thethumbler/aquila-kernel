@@ -11,7 +11,7 @@ pub unsafe extern fn rust_begin_panic(info: &core::panic::PanicInfo) -> ! {
         print!("panic occurred but can't get location information...:\n");
     }
 
-    core::fmt::write(&mut crate::kern::print::rconsole, *info.message().unwrap());
+    core::fmt::write(&mut crate::kern::print::RCONSOLE, *info.message().unwrap()).unwrap();
    
     loop {}
 }

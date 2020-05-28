@@ -11,23 +11,21 @@ malloc_define!(M_X86_FPU, "x86-fpu\0", "x86 FPU context\0");
 #[repr(align(16))]
 struct SaveBuffer([u8; 512]);
 
-static mut fpu_context: SaveBuffer = SaveBuffer([0; 512]);
-
-#[no_mangle]
-pub static mut last_fpu_thread: *mut Thread = core::ptr::null_mut();
+static mut FPU_CONTEXT: SaveBuffer = SaveBuffer([0; 512]);
+pub static mut LAST_FPU_THREAD: *mut Thread = core::ptr::null_mut();
 
 #[inline]
 unsafe fn fpu_save() {
-    asm!("fxsave ($0)"::"r"(&fpu_context):"memory");
+    llvm_asm!("fxsave ($0)"::"r"(&FPU_CONTEXT):"memory");
 }
 
 #[inline]
 unsafe fn fpu_restore() {
-    asm!("fxrstor ($0)"::"r"(&fpu_context):"memory");
+    llvm_asm!("fxrstor ($0)"::"r"(&FPU_CONTEXT):"memory");
 }
 
 pub unsafe fn x86_fpu_enable() {
-    asm!("clts");
+    llvm_asm!("clts");
     write_cr0((read_cr0() & !CR0_EM) | CR0_MP);
 }
 
@@ -36,7 +34,7 @@ pub unsafe fn x86_fpu_disable() {
 }
 
 pub unsafe fn x86_fpu_init() {
-    asm!("fninit");
+    llvm_asm!("fninit");
 }
 
 pub unsafe fn x86_fpu_trap() {
@@ -44,11 +42,11 @@ pub unsafe fn x86_fpu_trap() {
 
     let arch: *mut X86Thread = (*curthread!()).arch as *mut X86Thread;
 
-    if last_fpu_thread.is_null() {   /* Initialize */
+    if LAST_FPU_THREAD.is_null() {   /* Initialize */
         x86_fpu_init();
         (*arch).fpu_enabled = 1;
-    } else if (curthread!() != last_fpu_thread) {
-        let _arch: *mut X86Thread = (*last_fpu_thread).arch as *mut X86Thread;
+    } else if (curthread!() != LAST_FPU_THREAD) {
+        let _arch: *mut X86Thread = (*LAST_FPU_THREAD).arch as *mut X86Thread;
 
         if (*_arch).fpu_context.is_null() {  /* Lazy allocate */
             (*_arch).fpu_context = kmalloc(512, &M_X86_FPU, 0);
@@ -59,10 +57,10 @@ pub unsafe fn x86_fpu_trap() {
         }
 
         fpu_save();
-        core::ptr::copy(&fpu_context as *const _ as *mut u8, (*_arch).fpu_context, 512);
+        core::ptr::copy(&FPU_CONTEXT as *const _ as *mut u8, (*_arch).fpu_context, 512);
 
         if (*arch).fpu_enabled != 0 {    /* Restore context */
-            core::ptr::copy((*arch).fpu_context, &fpu_context as *const _ as *mut u8, 512);
+            core::ptr::copy((*arch).fpu_context, &FPU_CONTEXT as *const _ as *mut u8, 512);
             fpu_restore();
         } else {
             x86_fpu_init();
@@ -70,6 +68,6 @@ pub unsafe fn x86_fpu_trap() {
         }
     }
 
-    last_fpu_thread = curthread!();
+    LAST_FPU_THREAD = curthread!();
 }
 

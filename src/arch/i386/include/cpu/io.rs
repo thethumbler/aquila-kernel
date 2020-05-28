@@ -10,44 +10,44 @@ pub struct IOAddr {
 #[inline]
 unsafe fn __inb(port: usize) -> u8 {
     let ret;
-    asm!("inb %dx, %al":"={al}"(ret):"{dx}"(port));
+    llvm_asm!("inb %dx, %al":"={al}"(ret):"{dx}"(port));
     ret
 }
 
 #[inline]
 unsafe fn __inw(port: usize) -> u16 {
     let ret;
-    asm!("inw %dx, %ax":"={ax}"(ret):"{dx}"(port));
+    llvm_asm!("inw %dx, %ax":"={ax}"(ret):"{dx}"(port));
     ret
 }
 
 #[inline]
 unsafe fn __inl(port: usize) -> u32 {
     let ret;
-    asm!("inl %dx, %eax":"={eax}"(ret):"{dx}"(port));
+    llvm_asm!("inl %dx, %eax":"={eax}"(ret):"{dx}"(port));
     ret
 }
 
 #[inline]
 unsafe fn __outb(port: usize, value: u8) {
-    //asm!("outb %al, %dx"::"d"((port)),"a"((value)));
-    asm!("outb %al, %dx"::"{edx}"((port)),"{al}"((value)));
+    //llvm_asm!("outb %al, %dx"::"d"((port)),"a"((value)));
+    llvm_asm!("outb %al, %dx"::"{edx}"((port)),"{al}"((value)));
 }
 
 #[inline]
 unsafe fn __outw(port: usize, value: u16) {
-    asm!("outw %ax, %dx"::"{dx}"(port),"{ax}"(value));
+    llvm_asm!("outw %ax, %dx"::"{dx}"(port),"{ax}"(value));
 }
 
 #[inline]
 unsafe fn __outl(port: usize, value: u32) {
-    asm!("outl %eax, %dx"::"{dx}"(port),"{eax}"(value));
+    llvm_asm!("outl %eax, %dx"::"{dx}"(port),"{eax}"(value));
 }
 
 /*
 #define __io_wait() \
 ({ \
-    asm volatile ( "jmp 1f\n\t" \
+    llvm_asm volatile ( "jmp 1f\n\t" \
                    "1:jmp 2f\n\t" \
                    "2:" ); \
 })

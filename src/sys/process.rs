@@ -119,17 +119,17 @@ impl Process {
 }
 
 /* all processes */
-pub static mut procs: Queue<*mut Process> = Queue::empty();
+pub static mut PROCS: Queue<*mut Process> = Queue::empty();
 
 //static mut pid_bitmap: *mut BitMap = &BitMap::empty(4096) as *const _ as *mut BitMap;
-static mut pid_bitmap: *mut BitMap = &bitmap_new!(4096) as *const _ as *mut BitMap;
-static mut ff_pid: isize = 1;
+static mut PID_BITMAP: *mut BitMap = &bitmap_new!(4096) as *const _ as *mut BitMap;
+static mut FF_PID: isize = 1;
 
 pub unsafe fn proc_pid_alloc() -> isize {
-    for i in (ff_pid as usize)..(*pid_bitmap).max_idx {
-        if bitmap_check(pid_bitmap, i) == 0 {
-            bitmap_set(pid_bitmap, i);
-            ff_pid = i as isize;
+    for i in (FF_PID as usize)..(*PID_BITMAP).max_idx {
+        if bitmap_check(PID_BITMAP, i) == 0 {
+            bitmap_set(PID_BITMAP, i);
+            FF_PID = i as isize;
             return i as isize;
         }
     }
@@ -138,10 +138,10 @@ pub unsafe fn proc_pid_alloc() -> isize {
 }
 
 pub unsafe fn proc_pid_free(pid: isize) {
-    bitmap_clear(pid_bitmap, pid as usize);
+    bitmap_clear(PID_BITMAP, pid as usize);
 
-    if pid < ff_pid {
-        ff_pid = pid;
+    if pid < FF_PID {
+        FF_PID = pid;
     }
 }
 
@@ -187,7 +187,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
     (*proc).running = 1;
 
     /* add process to all processes queue */
-    procs.enqueue(proc);
+    PROCS.enqueue(proc);
 
     if !proc_ref.is_null() {
         *proc_ref = proc;
@@ -199,8 +199,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_pid_find(pid: pid_t) -> *mut Process {
-    //queue_for (node, procs) {
-    for qnode in procs.iter() {
+    for qnode in PROCS.iter() {
         let proc = (*qnode).value as *mut Process;
 
         if (*proc).pid == pid {
@@ -314,7 +313,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
     core::mem::take(&mut (*proc).sig_queue);
 
     /* mark all children as orphans */
-    for qnode in procs.iter() {
+    for qnode in PROCS.iter() {
         let _proc = (*qnode).value as *mut Process;
 
         if (*_proc).parent == proc {
@@ -346,7 +345,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 pub unsafe extern "C" fn proc_reap(proc: *mut Process) -> isize {
     proc_pid_free((*proc).pid);
 
-    procs.remove(proc);
+    PROCS.remove(proc);
     kfree(proc as *mut u8);
 
     return 0;

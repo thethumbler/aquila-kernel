@@ -1,6 +1,6 @@
 use prelude::*;
 use fs::*;
-use fs::tmpfs::tmpfs::tmpfs;
+use fs::tmpfs::*;
 use mm::*;
 use kern::time::*;
 
@@ -9,45 +9,45 @@ use crate::{malloc_declare};
 malloc_declare!(M_VNODE);
 
 /* devfs root directory (usually mounted on '/dev') */
-pub static mut devfs_root: *mut Vnode = core::ptr::null_mut();
+pub static mut DEVFS_ROOT: *mut Vnode = core::ptr::null_mut();
 
 unsafe fn devfs_init() -> isize {
     /* devfs is really just tmpfs */
-    devfs.vops = tmpfs.vops.clone();
-    devfs.fops = tmpfs.fops.clone();
+    DEVFS.vops = TMPFS.vops.clone();
+    DEVFS.fops = TMPFS.fops.clone();
 
-    devfs_root = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
-    if devfs_root.is_null() {
+    DEVFS_ROOT = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
+    if DEVFS_ROOT.is_null() {
         return -ENOMEM;
     }
 
-    (*devfs_root).ino    = devfs_root as usize as ino_t;
-    (*devfs_root).mode   = S_IFDIR | 0775;
-    (*devfs_root).nlink  = 2;
-    (*devfs_root).fs     = &devfs;
-    (*devfs_root).refcnt = 1;
+    (*DEVFS_ROOT).ino    = DEVFS_ROOT as usize as ino_t;
+    (*DEVFS_ROOT).mode   = S_IFDIR | 0775;
+    (*DEVFS_ROOT).nlink  = 2;
+    (*DEVFS_ROOT).fs     = &DEVFS;
+    (*DEVFS_ROOT).refcnt = 1;
 
     let mut ts: TimeSpec = core::mem::uninitialized();
     gettime(&mut ts);
 
-    (*devfs_root).ctime = ts;
-    (*devfs_root).atime = ts;
-    (*devfs_root).mtime = ts;
+    (*DEVFS_ROOT).ctime = ts;
+    (*DEVFS_ROOT).atime = ts;
+    (*DEVFS_ROOT).mtime = ts;
 
-    vfs_install(&mut devfs);
+    vfs_install(&mut DEVFS);
 
     return 0;
 }
 
 unsafe fn devfs_mount(dir: *const u8, flags: isize, data: *mut u8) -> isize {
-    if devfs_root.is_null() {
+    if DEVFS_ROOT.is_null() {
         return -EINVAL;
     }
 
-    vfs_bind(dir, devfs_root)
+    vfs_bind(dir, DEVFS_ROOT)
 }
 
-pub static mut devfs: Filesystem = Filesystem {
+pub static mut DEVFS: Filesystem = Filesystem {
     name:  "devfs",
     nodev: 1,
 

@@ -9,13 +9,13 @@ use sys::sched::*;
 
 #[no_mangle]
 pub unsafe fn arch_syscall(r: *mut X86Regs) {
-    if (*r).eax >= syscall_cnt {
+    if (*r).eax >= SYSCALL_CNT {
         print!("[{}:{}] {}: undefined syscall {}\n", (*curproc!()).pid, (*curthread!()).tid, cstr((*curproc!()).name), (*r).eax);
         arch_syscall_return(curthread!(), -ENOSYS as usize);
         return;
     }
 	
-    let syscall = &syscall_table[(*r).eax].0 as *const _ as *const fn(usize, usize, usize);
+    let syscall = &SYSCALL_TABLE[(*r).eax].0 as *const _ as *const fn(usize, usize, usize);
     (*syscall)((*r).ebx, (*r).ecx, (*r).edx);
 }
 

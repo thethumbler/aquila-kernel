@@ -34,12 +34,12 @@ pub const KERN_STACK_SIZE: usize = 8192usize;  /* 8 KiB */
 //
 //static inline void arch_interrupts_enable(void)
 //{
-//    asm volatile ("sti");
+//    llvm_asm volatile ("sti");
 //}
 //
 //static inline void arch_interrupts_disable(void)
 //{
-//    asm volatile ("cli");
+//    llvm_asm volatile ("cli");
 //}
 //
 //void x86_jump_user(uintptr_t eax, uintptr_t eip, uintptr_t cs, uintptr_t eflags, uintptr_t esp, uintptr_t ss) __attribute__((noreturn));

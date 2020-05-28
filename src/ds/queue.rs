@@ -9,6 +9,7 @@ use crate::print;
 malloc_define!(M_QUEUE, "queue\0", "queue structure\0");
 malloc_define!(M_QNODE, "queue-node\0", "queue node structure\0");
 
+#[repr(C)]
 #[derive(Debug)]
 pub struct QueueNode<T> {
     pub value: T,

@@ -6,9 +6,6 @@ use sys::binfmt::elf::*;
 use sys::thread::*;
 use mm::*;
 
-use crate::{page_round, print};
-
-
 /** binary format */
 pub struct BinaryFormat {
     pub check: Option<unsafe fn(vnode: *mut Vnode) -> isize>,
@@ -22,7 +19,7 @@ pub const USER_STACK_BASE : usize = USER_STACK - USER_STACK_SIZE;
 
 const NR_BINFMT: usize = 1;
 
-static binfmt_list: [BinaryFormat; NR_BINFMT] = [
+static BINFMT_LIST: [BinaryFormat; NR_BINFMT] = [
     BinaryFormat { check: Some(binfmt_elf_check), load: Some(binfmt_elf_load) },
 ];
 
@@ -97,8 +94,8 @@ pub unsafe fn binfmt_load(proc: *mut Process, path: *const u8, proc_ref: *mut *m
     }
 
     for i in 0..NR_BINFMT {
-        if binfmt_list[i].check.unwrap()(vnode) == 0 {
-            binfmt_fmt_load(proc, path, vnode, &binfmt_list[i], proc_ref);
+        if BINFMT_LIST[i].check.unwrap()(vnode) == 0 {
+            binfmt_fmt_load(proc, path, vnode, &BINFMT_LIST[i], proc_ref);
             //vfs_close(vnode);
             return 0;
         }

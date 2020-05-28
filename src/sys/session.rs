@@ -6,7 +6,7 @@ use sys::pgroup::*;
 malloc_define!(M_SESSION, "session\0", "session structure\0");
 
 /* all sessions */
-pub static mut sessions: Queue<*mut Session> = Queue::empty();
+pub static mut SESSIONS: Queue<*mut Session> = Queue::empty();
 
 pub struct Session {
     /** session id */

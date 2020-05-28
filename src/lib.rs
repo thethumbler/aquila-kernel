@@ -1,13 +1,11 @@
 #![no_std]
-#![no_main]
 #![feature(lang_items)]
 #![feature(const_fn)]
 #![feature(decl_macro)]
 #![feature(const_transmute)]
-#![feature(asm)]
+#![feature(llvm_asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_prelude)]
-#![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(alloc_error_handler)]
 #![feature(new_uninit)]
@@ -15,8 +13,9 @@
 
 #![feature(const_mut_refs)]
 
-//#![allow(unused)]
-#![allow(warnings)]
+#![allow(non_camel_case_types)]
+#![allow(unused)]
+#![allow(deprecated)]
 
 extern crate alloc;
 

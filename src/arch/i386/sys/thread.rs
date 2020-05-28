@@ -102,9 +102,8 @@ pub unsafe fn arch_thread_kill(thread: *mut Thread) {
         kfree((*arch).fpu_context);
     }
 
-    //extern struct thread *last_fpu_thread;
-    if last_fpu_thread == thread {
-        last_fpu_thread = core::ptr::null_mut();
+    if LAST_FPU_THREAD == thread {
+        LAST_FPU_THREAD = core::ptr::null_mut();
     }
 
     kfree(arch as *mut u8);
@@ -119,8 +118,8 @@ pub unsafe extern "C" fn internal_arch_sleep() {
     let sp;
     let bp;
 
-    asm!("mov %esp, $0":"=r"(sp)); /* read esp */
-    asm!("mov %ebp, $0":"=r"(bp)); /* read ebp */
+    llvm_asm!("mov %esp, $0":"=r"(sp)); /* read esp */
+    llvm_asm!("mov %ebp, $0":"=r"(bp)); /* read ebp */
     ip = x86_read_ip();
 
     if ip == -1isize as usize {

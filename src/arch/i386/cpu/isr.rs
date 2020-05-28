@@ -56,7 +56,7 @@ extern "C" {
  * - Table 6-1. Protected-Mode Exceptions and Interrupts
  */
 
-static int_msg: [&str; 32] = [
+static INT_MSG: [&str; 32] = [
     /* 0x00 */ "#DE: Divide Error",
     /* 0x01 */ "#DB: Debug Exception",
     /* 0x02 */ "NMI Interrupt",
@@ -126,14 +126,14 @@ pub unsafe extern "C" fn __x86_isr(regs: *mut X86Regs) {
     if (__x86_isr_int_num == 0x80) {  /* syscall */
         let arch: *mut X86Thread = (*curthread!()).arch as *mut X86Thread;
         (*arch).regs = regs as *mut u8;
-        //asm volatile ("sti");
+        //llvm_asm volatile ("sti");
         arch_syscall(regs);
         return;
     }
 
 
     if (__x86_isr_int_num < 32) {
-        let msg = int_msg[__x86_isr_int_num as usize];
+        let msg = INT_MSG[__x86_isr_int_num as usize];
         print!("Recieved interrupt {} [err={}]: {}\n", __x86_isr_int_num, __x86_isr_err_num, msg);
 
         if (__x86_isr_int_num == 0x0E) { /* Page Fault */

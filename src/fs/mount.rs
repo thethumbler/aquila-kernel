@@ -6,8 +6,7 @@ use mm::*;
 use kern::print::cstr;
 use crate::{print, malloc_define};
 
-static mut mounts_queue: Queue<*mut Mountpoint> = Queue::empty();
-pub static mut mounts: *mut Queue<*mut Mountpoint> = unsafe { &mut mounts_queue };
+pub static mut MOUNTS: Queue<*mut Mountpoint> = Queue::empty();
 
 malloc_define!(M_MOUNTPOINT, "mountpoint\0", "mount point structure\0");
 
@@ -15,7 +14,7 @@ pub unsafe fn vfs_mount(fs_type: *const u8, dir: *const u8, flags: isize, data: 
     let mut fs: *mut Filesystem = core::ptr::null_mut();
 
     /* look up filesystem */
-    let mut entry = registered_fs;
+    let mut entry = REGISTERED_FS;
     while !entry.is_null() {
         if (*entry).name == cstr(fs_type) {
             fs = (*entry).fs;
@@ -63,7 +62,7 @@ pub unsafe fn vfs_mount(fs_type: *const u8, dir: *const u8, flags: isize, data: 
         (*mp).path = strdup(_dir);
         (*mp).options = b"\0".as_ptr() as *mut u8;
 
-        (*mounts).enqueue(mp);
+        MOUNTS.enqueue(mp);
     }
 
     kfree(_dir);

@@ -87,21 +87,21 @@ impl AddressSpace {
 
         for qnode in src_vm_entries.iter() {
             unsafe {
-                let s_entry = unsafe { &*(qnode.value as *mut VmEntry) };
-                let mut d_entry = unsafe { kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry };
+                let s_entry = &*(qnode.value as *mut VmEntry);
+                let mut d_entry = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry;
 
                 *d_entry = *s_entry;
                 (*d_entry).qnode = (*dst).vm_entries.enqueue(&mut *d_entry);
 
                 if !s_entry.vm_anon.is_null() {
-                    let vm_anon = unsafe { &mut *s_entry.vm_anon };
+                    let vm_anon = &mut *s_entry.vm_anon;
 
                     vm_anon.flags |= VM_COPY;
                     vm_anon.incref();
                 }
 
                 if !s_entry.vm_object.is_null() {
-                    let vm_object = unsafe { &mut *s_entry.vm_object };
+                    let vm_object = &mut *s_entry.vm_object;
                     vm_object.refcnt += 1;
                 }
 
@@ -111,7 +111,7 @@ impl AddressSpace {
                     let eva = sva + s_entry.size;
                     let flags = s_entry.flags & !(VM_UW|VM_KW);
 
-                    unsafe { pmap_protect(self.pmap, sva, eva, flags as u32); }
+                    pmap_protect(self.pmap, sva, eva, flags as u32);
                 }
             }
         }

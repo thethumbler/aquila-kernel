@@ -1,4 +1,5 @@
 use prelude::*;
+
 use fs::*;
 use fs::posix::*;
 use fs::pseudofs::*;
@@ -10,13 +11,6 @@ use crate::{malloc_declare};
 
 malloc_declare!(M_VNODE);
 malloc_declare!(M_BUFFER);
-
-macro min {
-    ($a:expr, $b:expr) => {
-        if $a < $b { $a } else { $b }
-    }
-
-}
 
 unsafe fn tmpfs_vget(super_node: *mut Vnode, ino: ino_t, vnode: *mut *mut Vnode) -> isize {
     /* vnode is always present in memory */
@@ -143,7 +137,7 @@ unsafe fn tmpfs_file_eof(file: *mut FileDescriptor) -> isize {
 }
 
 unsafe fn tmpfs_init() -> isize {
-    return vfs_install(&tmpfs as *const _ as *mut Filesystem);
+    return vfs_install(&mut TMPFS);
 }
 
 unsafe fn tmpfs_mount(dir: *const u8, flags: isize, data: *mut u8) -> isize {
@@ -189,7 +183,7 @@ unsafe fn tmpfs_mount(dir: *const u8, flags: isize, data: *mut u8) -> isize {
     (*tmpfs_root).mode   = S_IFDIR | mode as mode_t;
     (*tmpfs_root).size   = 0;
     (*tmpfs_root).nlink  = 2;
-    (*tmpfs_root).fs     = &tmpfs as *const _ as *mut Filesystem;
+    (*tmpfs_root).fs     = &TMPFS;
     (*tmpfs_root).p      = core::ptr::null_mut();
     (*tmpfs_root).refcnt = 1;
 
@@ -205,7 +199,7 @@ unsafe fn tmpfs_mount(dir: *const u8, flags: isize, data: *mut u8) -> isize {
     return 0;
 }
 
-pub static mut tmpfs: Filesystem = Filesystem {
+pub static mut TMPFS: Filesystem = Filesystem {
     name:    "tmpfs",
     nodev:   1,
 

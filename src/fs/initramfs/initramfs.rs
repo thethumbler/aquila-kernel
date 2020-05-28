@@ -1,7 +1,7 @@
 use prelude::*;
 
 use dev::*;
-use dev::rd::ramdisk::rd_size;
+use dev::rd::ramdisk::RD_SIZE;
 use fs::*;
 use fs::devfs::*;
 use kern::string::*;
@@ -33,8 +33,8 @@ pub unsafe fn load_ramdisk(_: *mut u8) -> isize {
 
     (*RD_DEV).mode = S_IFBLK;
     (*RD_DEV).rdev = devid!(1, 0);
-    (*RD_DEV).size = rd_size;
-    (*RD_DEV).fs   = &devfs;
+    (*RD_DEV).size = RD_SIZE;
+    (*RD_DEV).fs   = &DEVFS;
 
     let mut root: *mut Vnode = core::ptr::null_mut();
     let mut err = -1;

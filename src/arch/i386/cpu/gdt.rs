@@ -21,44 +21,7 @@ pub struct TssEntry {
     _unused: [u32; 23],
 }
 
-pub static mut tss_entry: TssEntry = TssEntry { link: 0, sp: 0, ss: 0, _unused: [0; 23] };
-
-/*
-    uint32_t limit_lo : 16; /* Segment Limit 15:00 */
-    uint32_t base_lo  : 16; /* Base Address 15:00 */
-
-    uint32_t base_mid : 8;  /* Base Address 23:16 */
-    uint32_t type     : 4;  /* Segment Type */
-    uint32_t s        : 1;  /* Descriptor type (0=system, 1=code) */
-    uint32_t dpl      : 2;  /* Descriptor Privellage Level */
-    uint32_t p        : 1;  /* Segment present */
-
-    uint32_t limit_hi : 4;  /* Segment Limit 19:16 */
-    uint32_t avl      : 1;  /* Avilable for use by system software */
-    uint32_t l        : 1;  /* Long mode segment (64-bit only) */
-    uint32_t db       : 1;  /* Default operation size / upper Bound */
-    uint32_t g        : 1;  /* Granularity */
-    uint32_t base_hi  : 8;  /* Base Address 31:24 */
-
-
-
-
-    uint32_t base_hi  : 8;  /* Base Address 31:24 */
-    uint32_t g        : 1;  /* Granularity */
-    uint32_t db       : 1;  /* Default operation size / upper Bound */
-    uint32_t l        : 1;  /* Long mode segment (64-bit only) */
-    uint32_t avl      : 1;  /* Avilable for use by system software */
-    uint32_t limit_hi : 4;  /* Segment Limit 19:16 */
-
-    uint32_t p        : 1;  /* Segment present */
-    uint32_t dpl      : 2;  /* Descriptor Privellage Level */
-    uint32_t s        : 1;  /* Descriptor type (0=system, 1=code) */
-    uint32_t type     : 4;  /* Segment Type */
-    uint32_t base_mid : 8;  /* Base Address 23:16 */
-
-    uint32_t base_lo  : 16; /* Base Address 15:00 */
-    uint32_t limit_lo : 16; /* Segment Limit 15:00 */
-*/
+pub static mut TSS_ENTRY: TssEntry = TssEntry { link: 0, sp: 0, ss: 0, _unused: [0; 23] };
 
 impl GdtEntry {
     fn base_hi(mut self, a: u64) -> Self {
@@ -286,24 +249,17 @@ impl GdtEntry {
     }
 }
 
-#[no_mangle]
-pub static mut gdt: [GdtEntry; 256] = [GdtEntry(0); 256];
+static mut GDT: [GdtEntry; 256] = [GdtEntry(0); 256];
 
 pub unsafe fn x86_gdt_setup() {
     let base = 0;
     let limit = 0xFFFF_FFFF;
 
-    //gdt[0] = GdtEntry(0x0000000000000000u64);
-    //gdt[1] = GdtEntry(0x00CF9A000000FFFFu64);
-    //gdt[2] = GdtEntry(0x00CF92000000FFFFu64);
-    //gdt[3] = GdtEntry(0x00CFFA000000FFFFu64);
-    //gdt[4] = GdtEntry(0x00CFF2000000FFFFu64);
-
     /* null segment */
-    gdt[0] = GdtEntry::new();
+    GDT[0] = GdtEntry::new();
 
     /* code segment - kernel */
-    gdt[1] = GdtEntry::new()
+    GDT[1] = GdtEntry::new()
         .base(base)
         .limit(limit)
         .segment_type(SegmentType::ExecuteReadCode)
@@ -315,7 +271,7 @@ pub unsafe fn x86_gdt_setup() {
         .present(true);
 
     /* data segment - kernel */
-    gdt[2] = GdtEntry::new()
+    GDT[2] = GdtEntry::new()
         .base(base)
         .limit(limit)
         .segment_type(SegmentType::ReadWriteData)
@@ -327,7 +283,7 @@ pub unsafe fn x86_gdt_setup() {
         .present(true);
 
     /* code segment - user */
-    gdt[3] = GdtEntry::new()
+    GDT[3] = GdtEntry::new()
         .base(base)
         .limit(limit)
         .segment_type(SegmentType::ExecuteReadCode)
@@ -339,7 +295,7 @@ pub unsafe fn x86_gdt_setup() {
         .present(true);
 
     /* data segment - user */
-    gdt[4] = GdtEntry::new()
+    GDT[4] = GdtEntry::new()
         .base(base)
         .limit(limit)
         .segment_type(SegmentType::ReadWriteData)
@@ -350,18 +306,18 @@ pub unsafe fn x86_gdt_setup() {
         .available(false)
         .present(true);
 
-    x86_lgdt(core::mem::size_of_val(&gdt) - 1, &gdt as *const _ as usize);
+    x86_lgdt(core::mem::size_of_val(&GDT) - 1, &GDT as *const _ as usize);
 }
 
 pub unsafe fn x86_tss_setup(sp: usize) {
-    tss_entry.ss = 0x10;
-    tss_entry.sp = sp;
+    TSS_ENTRY.ss = 0x10;
+    TSS_ENTRY.sp = sp;
 
-    let tss_base  = &tss_entry as *const _ as usize;
-    let tss_limit = core::mem::size_of_val(&tss_entry) - 1;
+    let tss_base  = &TSS_ENTRY as *const _ as usize;
+    let tss_limit = core::mem::size_of_val(&TSS_ENTRY) - 1;
 
     /* TSS Segment */
-    gdt[5] = GdtEntry::new()
+    GDT[5] = GdtEntry::new()
         .base(tss_base as u64)
         .limit(tss_limit as u64)
         .segment_type(SegmentType::TaskState)
@@ -376,5 +332,5 @@ pub unsafe fn x86_tss_setup(sp: usize) {
 }
 
 pub unsafe fn x86_kernel_stack_set(sp: usize) {
-    tss_entry.sp = sp;
+    TSS_ENTRY.sp = sp;
 }

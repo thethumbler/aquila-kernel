@@ -3,8 +3,8 @@ use prelude::*;
 use boot::*;
 use sys::binfmt::elf::*;
 
-use crate::arch::i386::cpu::init::virtual_address;
-use crate::arch::i386::include::boot::multiboot::*;
+use arch::cpu::init::virtual_address;
+use arch::include::boot::multiboot::*;
 
 #[inline]
 unsafe fn get_multiboot_mmap_count(info: *const MultibootInfo) -> isize {
@@ -58,43 +58,43 @@ unsafe fn build_multiboot_modules(info: *const MultibootInfo, modules: *mut Boot
     }
 }
 
-static mut boot_info: BootInfo = BootInfo::empty();
-static mut boot_info_mmap: [BootMemoryMap; 32] = [BootMemoryMap::empty(); 32];
-static mut boot_info_modules: [BootModule; 32] = [BootModule::empty(); 32];
+static mut BOOT_INFO: BootInfo = BootInfo::empty();
+static mut BOOT_INFO_MMAP: [BootMemoryMap; 32] = [BootMemoryMap::empty(); 32];
+static mut BOOT_INFO_MODULES: [BootModule; 32] = [BootModule::empty(); 32];
 
 pub unsafe fn process_multiboot_info(info: *const MultibootInfo) -> *const BootInfo {
-    boot_info.cmdline = virtual_address((*info).cmdline as usize);
-    boot_info.total_mem = ((*info).mem_lower + (*info).mem_upper) as usize;
+    BOOT_INFO.cmdline = virtual_address((*info).cmdline as usize);
+    BOOT_INFO.total_mem = ((*info).mem_lower + (*info).mem_upper) as usize;
 
     if (*info).flags & MULTIBOOT_INFO_ELF_SHDR != 0 {
-        boot_info.shdr = virtual_address((*info).elf_sec.addr as usize);
-        boot_info.shdr_num = (*info).elf_sec.num;
+        BOOT_INFO.shdr = virtual_address((*info).elf_sec.addr as usize);
+        BOOT_INFO.shdr_num = (*info).elf_sec.num;
 
         let mut symtab: *mut Elf32SectionHeader = core::ptr::null_mut();
         let mut strtab: *mut Elf32SectionHeader = core::ptr::null_mut();
 
-        for i in 0..boot_info.shdr_num {
-            let shdr: *mut Elf32SectionHeader = boot_info.shdr.offset(i as isize) as *mut Elf32SectionHeader;
+        for i in 0..BOOT_INFO.shdr_num {
+            let shdr: *mut Elf32SectionHeader = BOOT_INFO.shdr.offset(i as isize) as *mut Elf32SectionHeader;
 
             if (*shdr).sh_type == SHT_SYMTAB {
                 symtab = shdr;
                 (*symtab).sh_addr = virtual_address((*symtab).sh_addr as usize) as *const u8 as usize as u32;
-                boot_info.symtab = symtab;
-                boot_info.symnum = (*shdr).sh_size / (core::mem::size_of::<Elf32Symbol>() as u32);
+                BOOT_INFO.symtab = symtab;
+                BOOT_INFO.symnum = (*shdr).sh_size / (core::mem::size_of::<Elf32Symbol>() as u32);
             }
 
             if (*shdr).sh_type == SHT_STRTAB && strtab.is_null() {
                 strtab = shdr;
                 (*strtab).sh_addr = virtual_address((*strtab).sh_addr as usize) as *const u8 as usize as u32;
-                boot_info.strtab = strtab;
+                BOOT_INFO.strtab = strtab;
             }
         }
     }
 
-    boot_info.mmap_count = get_multiboot_mmap_count(info);
-    boot_info.mmap = boot_info_mmap.as_ptr();
+    BOOT_INFO.mmap_count = get_multiboot_mmap_count(info);
+    BOOT_INFO.mmap = BOOT_INFO_MMAP.as_ptr();
 
-    build_multiboot_mmap(info, boot_info_mmap.as_mut_ptr());
+    build_multiboot_mmap(info, BOOT_INFO_MMAP.as_mut_ptr());
 
     /*
 //#ifdef MULTIBOOT_GFX
@@ -128,10 +128,10 @@ pub unsafe fn process_multiboot_info(info: *const MultibootInfo) -> *const BootI
 //#endif
     */
 
-    boot_info.modules_count = (*info).mods_count as isize;
-    boot_info.modules = boot_info_modules.as_ptr();
+    BOOT_INFO.modules_count = (*info).mods_count as isize;
+    BOOT_INFO.modules = BOOT_INFO_MODULES.as_ptr();
 
-    build_multiboot_modules(info, boot_info_modules.as_mut_ptr());
+    build_multiboot_modules(info, BOOT_INFO_MODULES.as_mut_ptr());
 
-    return &boot_info;
+    return &BOOT_INFO;
 }

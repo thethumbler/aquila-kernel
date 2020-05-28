@@ -6,7 +6,7 @@ use sys::process::*;
 malloc_define!(M_PGROUP, "pgroup\0", "process group structure\0");
 
 /* all process groups */
-pub static mut pgroups: Queue<*mut ProcessGroup> = Queue::empty();
+pub static mut PGROUPS: Queue<*mut ProcessGroup> = Queue::empty();
 
 pub struct ProcessGroup {
     /** process group id */

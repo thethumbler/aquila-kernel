@@ -77,61 +77,61 @@ pub const CR0_NE: usize = 1 << 5;
 #[inline]
 pub unsafe fn read_cr0() -> usize {
     let retval;
-    asm!("mov %cr0, $0":"=r"(retval));
+    llvm_asm!("mov %cr0, $0":"=r"(retval));
     retval
 }
 
 #[inline]
 pub unsafe fn read_cr1() -> usize {
     let retval;
-    asm!("mov %cr1, $0":"=r"(retval));
+    llvm_asm!("mov %cr1, $0":"=r"(retval));
     retval
 }
 
 #[inline]
 pub unsafe fn read_cr2() -> usize {
     let retval;
-    asm!("mov %cr2, $0":"=r"(retval));
+    llvm_asm!("mov %cr2, $0":"=r"(retval));
     retval
 }
 
 #[inline]
 pub unsafe fn read_cr3() -> usize {
     let retval;
-    asm!("mov %cr3, $0":"=r"(retval));
+    llvm_asm!("mov %cr3, $0":"=r"(retval));
     retval
 }
 
 #[inline]
 pub unsafe fn read_cr4() -> usize {
     let retval;
-    asm!("mov %cr4, $0":"=r"(retval));
+    llvm_asm!("mov %cr4, $0":"=r"(retval));
     retval
 }
 
 #[inline]
 pub unsafe fn write_cr0(val: usize) {
-    asm!("mov $0, %cr0"::"r"(val));
+    llvm_asm!("mov $0, %cr0"::"r"(val));
 }
 
 #[inline]
 pub unsafe fn write_cr1(val: usize) {
-    asm!("mov $0, %cr1"::"r"(val));
+    llvm_asm!("mov $0, %cr1"::"r"(val));
 }
 
 #[inline]
 pub unsafe fn write_cr2(val: usize) {
-    asm!("mov $0, %cr2"::"r"(val));
+    llvm_asm!("mov $0, %cr2"::"r"(val));
 }
 
 #[inline]
 pub unsafe fn write_cr3(val: usize) {
-    asm!("mov $0, %cr3"::"r"(val));
+    llvm_asm!("mov $0, %cr3"::"r"(val));
 }
 
 #[inline]
 pub unsafe fn write_cr4(val: usize) {
-    asm!("mov $0, %cr4"::"r"(val));
+    llvm_asm!("mov $0, %cr4"::"r"(val));
 }
 
 /*
