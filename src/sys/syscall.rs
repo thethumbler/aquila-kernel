@@ -884,7 +884,7 @@ unsafe fn sys_mmap(args: *mut MmapArgs, ret: *mut *mut u8) {
 
     let vm_space = &mut (*curproc!()).vm_space;
 
-    err = vm_space_insert(vm_space, vm_entry);
+    err = vm_space.insert(&mut *vm_entry);
     if err != 0 {
         if !(*vm_entry).qnode.is_null() {
             (*vm_space).vm_entries.node_remove((*vm_entry).qnode);

@@ -126,7 +126,7 @@ pub struct Process {
     pub entry: usize,
 
     /** virtual memory regions */
-    pub vm_space: VmSpace,
+    pub vm_space: AddressSpace,
 
     pub heap_vm: *mut VmEntry,
     pub stack_vm: *mut VmEntry,

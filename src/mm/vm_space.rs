@@ -12,15 +12,8 @@ use crate::{page_align, malloc_declare, print};
 
 malloc_declare!(M_VM_ENTRY);
 
-/** 
- * virtual memory space
- *
- * This structure holds the entire mapping of a virtual memory 
- * space/view
- */
-#[repr(C)]
 #[derive(Debug)]
-pub struct VmSpace {
+pub struct AddressSpace {
     /** physical memory mapper (arch-specific) */
     pub pmap: *mut PhysicalMap,
 
@@ -28,10 +21,10 @@ pub struct VmSpace {
     pub vm_entries: Queue<VmEntry>,
 }
 
-unsafe impl Sync for VmSpace {}
+unsafe impl Sync for AddressSpace {}
 
-impl VmSpace {
-    /** look for the [VmEntry] containing ```vaddr``` inside the [VmSpace] */
+impl AddressSpace {
+    /** look for the [VmEntry] containing ```vaddr``` inside the [AddressSpace] */
     pub fn find(&self, vaddr: usize) -> Option<&VmEntry> {
         let vaddr = page_align!(vaddr);
 
@@ -72,10 +65,6 @@ impl VmSpace {
             }
         }
 
-        //if (!prev_end) {
-        //    vm_entry->base = (uintptr_t)-1 - vm_entry->size;
-        //}
-
         for qnode in queue.iter() {
             let cur_vm_entry = unsafe { &*(qnode.value as *mut VmEntry) };
 
@@ -111,7 +100,7 @@ impl VmSpace {
         }
     }
 
-    pub fn fork(&mut self, dst: &mut VmSpace) -> isize {
+    pub fn fork(&mut self, dst: &mut AddressSpace) -> isize {
         /* copy vm entries */
         let src_vm_entries = &mut self.vm_entries;
 
@@ -150,108 +139,10 @@ impl VmSpace {
     }
 }
 
-pub unsafe fn vm_space_insert(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize {
-    if vm_space.is_null() || vm_entry.is_null() {
-        //return -EINVAL;
-        return -1;
-    }
-
-    (*vm_space).insert(&mut *vm_entry)
-
-    /*
-    let queue = &mut (*vm_space).vm_entries;
-
-    let alloc = (*vm_entry).base == 0;
-
-    let mut end = (*vm_entry).base as usize + (*vm_entry).size;
-
-    let mut cur = core::ptr::null_mut() as *mut Qnode;
-    let mut prev_end = 0usize;
-
-    if alloc {
-        /* look for the last valid entry */
-        let mut qnode = queue.head;
-        while !qnode.is_null() {
-            let cur_vm_entry = (*qnode).value as *mut VmEntry;
-
-            if (*cur_vm_entry).base as usize - prev_end >= (*vm_entry).size as usize {
-                (*vm_entry).base = (*cur_vm_entry).base - (*vm_entry).size;
-                end = ((*vm_entry).base + (*vm_entry).size) as usize;
-            }
-
-            prev_end = ((*cur_vm_entry).base + (*cur_vm_entry).size) as usize;
-
-            qnode = (*qnode).next;
-        }
-    }
-
-    //if (!prev_end) {
-    //    vm_entry->base = (uintptr_t)-1 - vm_entry->size;
-    //}
-
-    for qnode in (*queue).iter() {
-        let cur_vm_entry = (*qnode).value as *mut VmEntry;
-
-        if (*vm_entry).base != 0 && (*cur_vm_entry).base >= end && prev_end <= (*vm_entry).base as usize {
-            cur = qnode as *const _ as *mut Qnode;
-            break;
-        }
-
-        prev_end = ((*cur_vm_entry).base + (*cur_vm_entry).size) as usize;
-
-        //qnode = (*qnode).next;
-    }
-
-    if cur.is_null() {
-        //return -ENOMEM;
-        return -1;
-    }
-
-    let node = kmalloc(core::mem::size_of::<Qnode>(), &M_QNODE, M_ZERO) as *mut Qnode;
-    if node.is_null() {
-        /* TODO */
-        return -1;
-    }
-
-    (*node).value = vm_entry as *mut u8;
-    (*node).next  = cur;
-    (*node).prev  = (*cur).prev;
-
-    if !(*cur).prev.is_null() {
-        (*(*cur).prev).next = node;
-    }
-
-    (*cur).prev  = node;
-    (*vm_entry).qnode = node;
-    (*queue).count += 1;
-
-    return 0;
-    */
-}
-
-/*
- * \ingroup mm
- * \brief lookup the vm entry containing `vaddr` inside a vm space
- */
-pub unsafe fn vm_space_find(vm_space: *mut VmSpace, vaddr: usize) -> *mut VmEntry {
+pub unsafe fn vm_space_find(vm_space: *mut AddressSpace, vaddr: usize) -> *mut VmEntry {
     if vm_space.is_null() {
         return core::ptr::null_mut();
     }
-
-    /*
-    let vaddr = page_align!(vaddr);
-
-    let vm_entries = &mut (*vm_space).vm_entries;
-
-    for qnode in (*vm_entries).iter() {
-        let vm_entry = (*qnode).value as *mut VmEntry;
-        let vm_end = (*vm_entry).base + (*vm_entry).size;
-
-        if vaddr >= (*vm_entry).base && vaddr < vm_end {
-            return vm_entry;
-        }
-    }
-    */
 
     let r = (*vm_space).find(vaddr);
 
@@ -260,15 +151,9 @@ pub unsafe fn vm_space_find(vm_space: *mut VmSpace, vaddr: usize) -> *mut VmEntr
     } else {
         core::ptr::null_mut()
     }
-
-    //return core::ptr::null_mut();
 }
 
-/*
- * \ingroup mm
- * \brief destroy all resources associated with a vm space
- */
-pub unsafe fn vm_space_destroy(vm_space: *mut VmSpace) -> () {
+pub unsafe fn vm_space_destroy(vm_space: *mut AddressSpace) -> () {
     if vm_space.is_null() {
         return;
     }
@@ -285,60 +170,11 @@ pub unsafe fn vm_space_destroy(vm_space: *mut VmSpace) -> () {
     pmap_remove_all((*vm_space).pmap);
 }
 
-/*
- * \ingroup mm
- * \brief fork a vm space into another vm space
- */
-pub unsafe fn vm_space_fork(src: *mut VmSpace, dst: *mut VmSpace) -> isize {
+pub unsafe fn vm_space_fork(src: *mut AddressSpace, dst: *mut AddressSpace) -> isize {
     if src.is_null() || dst.is_null() {
         //return -EINVAL;
         return -1;
     }
 
     (*src).fork(&mut *dst)
-
-    /*
-
-    /* copy vm entries */
-    let src_vm_entries = &mut (*src).vm_entries;
-
-    let mut qnode = (*src_vm_entries).head;
-
-    while !qnode.is_null() {
-        let s_entry = (*qnode).value as *mut VmEntry;
-        let d_entry = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, 0) as *mut VmEntry;
-
-        if d_entry.is_null() {
-            /* TODO */
-        }
-
-        //memcpy(d_entry, s_entry, sizeof(struct vm_entry));
-        *d_entry = *s_entry;
-
-        (*d_entry).qnode = enqueue(&mut (*dst).vm_entries, d_entry as *mut u8);
-
-        if !(*s_entry).vm_anon.is_null() {
-            (*(*s_entry).vm_anon).flags |= VM_COPY;
-            vm_anon_incref((*s_entry).vm_anon);
-            //s_entry->vm_anon->ref++;
-        }
-
-        if !(*s_entry).vm_object.is_null() {
-            (*(*s_entry).vm_object).refcnt += 1;
-        }
-
-        if ((*s_entry).flags & (VM_UW|VM_KW)) != 0 && ((*s_entry).flags & VM_SHARED) == 0 {
-            /* remove write permission from all pages */
-            let sva = (*s_entry).base;
-            let eva = sva + (*s_entry).size;
-            let flags = (*s_entry).flags & !(VM_UW|VM_KW);
-
-            pmap_protect((*src).pmap, sva, eva, flags as u32);
-        }
-
-        qnode = (*qnode).next;
-    }
-
-    return 0;
-    */
 }

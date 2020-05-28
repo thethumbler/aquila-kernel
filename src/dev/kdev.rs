@@ -6,7 +6,7 @@ use crate::include::core::types::*;
 use crate::dev::dev::Device;
 use crate::dev::dev::DeviceDescriptor;
 use crate::include::fs::stat::*;
-use crate::mm::vm_space::VmSpace;
+use crate::mm::vm_space::AddressSpace;
 use crate::mm::vm_entry::VmEntry;
 use crate::include::mm::kvmem::*;
 use crate::kern::print::cstr;
@@ -258,7 +258,7 @@ pub unsafe fn kdev_ioctl(dd: *mut DeviceDescriptor, request: isize, argp: *mut u
     return (*dev).ioctl.unwrap()(dd, request as usize, argp);
 }
 
-pub unsafe fn kdev_map(dd: *mut DeviceDescriptor, vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize {
+pub unsafe fn kdev_map(dd: *mut DeviceDescriptor, vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> isize {
     let dev = kdev_get(dd);
 
     if dev.is_null() {

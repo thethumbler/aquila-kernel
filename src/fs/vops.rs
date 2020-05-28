@@ -93,7 +93,7 @@ pub unsafe fn vfs_vget(super_node: *mut Vnode, ino: ino_t, vnode_ref: *mut *mut 
     return err;
 }
 
-pub unsafe fn vfs_map(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize {
+pub unsafe fn vfs_map(vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> isize {
     if vm_entry.is_null() || (*vm_entry).vm_object.is_null() || (*(*vm_entry).vm_object).objtype != VMOBJ_FILE as isize {
         return -EINVAL;
     }

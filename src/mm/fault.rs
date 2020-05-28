@@ -21,7 +21,7 @@ struct FaultInfo {
     flags: usize,
     addr: usize,
 
-    vm_space: *mut VmSpace,
+    vm_space: *mut AddressSpace,
     vm_entry: *mut VmEntry,
 
     off: off_t,
