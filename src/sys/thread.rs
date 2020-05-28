@@ -57,12 +57,12 @@ pub struct Thread {
     pub stack: ThreadStack,
 
     /** Current sleep queue */
-    pub sleep_queue: *mut Queue<Thread>,
-    pub sleep_node: *mut QueueNode<Thread>,
+    pub sleep_queue: *mut Queue<*mut Thread>,
+    pub sleep_node: *mut QueueNode<*mut Thread>,
 
     /** Scheduler queue */
-    pub sched_queue: *mut Queue<Thread>,
-    pub sched_node: *mut QueueNode<Thread>,
+    pub sched_queue: *mut Queue<*mut Thread>,
+    pub sched_node: *mut QueueNode<*mut Thread>,
 
     /** Arch specific data */
     pub arch: *mut u8,
@@ -123,7 +123,7 @@ pub unsafe fn thread_kill(thread: *mut Thread) -> isize {
     return 0;
 }
 
-pub unsafe fn thread_queue_sleep(queue: *mut Queue<Thread>) -> isize {
+pub unsafe fn thread_queue_sleep(queue: *mut Queue<*mut Thread>) -> isize {
     if queue.is_null() {
         panic!("sleeping in a blackhole?");
     }
@@ -147,14 +147,14 @@ pub unsafe fn thread_queue_sleep(queue: *mut Queue<Thread>) -> isize {
     }
 }
 
-pub unsafe fn thread_queue_wakeup(queue: *mut Queue<Thread>) -> isize {
+pub unsafe fn thread_queue_wakeup(queue: *mut Queue<*mut Thread>) -> isize {
     if queue.is_null() {
         //return -EINVAL;
         return -1;
     }
 
     while (*queue).count > 0 {
-        let thread = (*queue).dequeue();
+        let thread = (*queue).dequeue().unwrap();
         (*thread).sleep_node = core::ptr::null_mut();
         sched_thread_ready(thread);
     }

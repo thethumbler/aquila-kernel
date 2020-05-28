@@ -34,8 +34,8 @@ pub struct Vnode {
     /** number of processes referencing this vnode */
     pub refcnt: usize,
 
-    pub read_queue: *mut Queue<Thread>,
-    pub write_queue: *mut Queue<Thread>,
+    pub read_queue: *mut Queue<*mut Thread>,
+    pub write_queue: *mut Queue<*mut Thread>,
 
     /** virtual memory object associated with vnode */
     pub vm_object: *mut VmObject,

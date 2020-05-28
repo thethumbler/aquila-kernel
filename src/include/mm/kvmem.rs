@@ -6,7 +6,7 @@ pub struct MallocType {
     pub desc: *const u8,
     pub nr: usize,
     pub total: usize,
-    pub qnode: *mut QueueNode<MallocType>,
+    pub qnode: *mut QueueNode<*mut MallocType>,
 }
 
 unsafe impl Sync for MallocType {}

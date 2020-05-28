@@ -15,7 +15,7 @@ use crate::{malloc_declare, print, DEV};
 malloc_declare!(M_VNODE);
 
 static mut rd_dev: *mut Vnode = core::ptr::null_mut();
-static mut archivers: Queue<Filesystem> = Queue::empty();
+static mut archivers: Queue<*mut Filesystem> = Queue::empty();
 
 pub unsafe fn initramfs_archiver_register(fs: *mut Filesystem) -> isize {
     if archivers.enqueue(fs).is_null() {
@@ -45,7 +45,7 @@ pub unsafe fn load_ramdisk(_: *mut u8) -> isize {
     let mut err = -1;
 
     for node in archivers.iter() {
-        let fs = (*node).value as *mut Filesystem;
+        let fs = (*node).value;
         err = (*fs).load(rd_dev, &mut root);
 
         if err == 0 {

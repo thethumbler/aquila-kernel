@@ -101,7 +101,7 @@ pub unsafe fn signal_proc_send(proc: *mut Process, signal: isize) -> isize {
     if proc == curproc!() {
         arch::handle_signal(signal as usize);
     } else {
-        (*(*proc).sig_queue).enqueue(signal as usize as *mut isize);
+        (*(*proc).sig_queue).enqueue(signal);
 
         /* wake up main thread if sleeping - XXX */
         let thread = (*(*proc).threads.head).value as *mut Thread;

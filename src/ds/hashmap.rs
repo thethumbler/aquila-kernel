@@ -46,7 +46,7 @@ const HASHMAP_DEFAULT: usize = 20;
 #[repr(C)]
 pub struct HashMap<K, V> {
     count: usize,
-    buckets: *mut Queue<HashMapNode<K, V>>,
+    buckets: *mut Queue<*mut HashMapNode<K, V>>,
     buckets_count: usize,
 
     phantom_k: PhantomData<K>,
@@ -60,13 +60,13 @@ pub struct HashMapNode<K, V> {
     pub hash: u64,
     pub key: K,
     pub value: V,
-    pub qnode: *mut QueueNode<HashMapNode<K, V>>,
+    pub qnode: *mut QueueNode<*mut HashMapNode<K, V>>,
 }
 
 pub struct HashMapIterator<'a, K, V> {
     idx: usize,
-    cur: *mut QueueNode<HashMapNode<K, V>>,
-    buckets: *mut Queue<HashMapNode<K, V>>,
+    cur: *mut QueueNode<*mut HashMapNode<K, V>>,
+    buckets: *mut Queue<*mut HashMapNode<K, V>>,
     buckets_count: usize,
     phantom: PhantomData<&'a HashMapNode<K, V>>,
 }
@@ -100,7 +100,7 @@ where K: Copy + Eq + Hash, V: Copy
 
         HashMap {
             count: 0,
-            buckets: unsafe { kmalloc(buckets_count * core::mem::size_of::<Queue<HashMapNode<K, V>>>(), &M_QUEUE, M_ZERO) as *mut Queue<HashMapNode<K, V>> },
+            buckets: unsafe { kmalloc(buckets_count * core::mem::size_of::<Queue<*mut HashMapNode<K, V>>>(), &M_QUEUE, M_ZERO) as *mut Queue<*mut HashMapNode<K, V>> },
             buckets_count: buckets_count,
             phantom_k: PhantomData,
             phantom_v: PhantomData,
@@ -234,8 +234,8 @@ where K: Copy + Eq + Hash, V: Copy
 
                 let mut node = (*queue).dequeue();
 
-                while !node.is_null() {
-                    kfree(node as *mut u8);
+                while !node.is_none() {
+                    kfree(node.unwrap() as *mut u8);
                     node = (*queue).dequeue();
                 }
             }

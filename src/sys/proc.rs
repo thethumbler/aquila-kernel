@@ -45,7 +45,7 @@ pub struct Session {
     pub sid: pid_t,
 
     /** process groups */
-    pub pgps: *mut Queue<ProcessGroup>,
+    pub pgps: *mut Queue<*mut ProcessGroup>,
 
     /** session leader */
     pub leader: *mut Process,
@@ -54,7 +54,7 @@ pub struct Session {
     pub ctty: *mut u8,
 
     /** session node on sessions queue */
-    pub qnode: *mut QueueNode<Session>,
+    pub qnode: *mut QueueNode<*mut Session>,
 }
 
 unsafe impl Sync for Session {}
@@ -72,16 +72,16 @@ pub struct ProcessGroup {
     pub session: *mut Session,
 
     /** session queue node */
-    pub session_node: *mut QueueNode<ProcessGroup>,
+    pub session_node: *mut QueueNode<*mut ProcessGroup>,
 
     /** processes */
-    pub procs: *mut Queue<Process>,
+    pub procs: *mut Queue<*mut Process>,
 
     /** process group leader */
     pub leader: *mut Process,
 
     /** group node on pgroups queue */
-    pub qnode: *mut QueueNode<ProcessGroup>,
+    pub qnode: *mut QueueNode<*mut ProcessGroup>,
 }
 
 unsafe impl Sync for ProcessGroup {}
@@ -93,7 +93,7 @@ pub struct Process {
 
     /** associated process group */
     pub pgrp: *mut ProcessGroup,
-    pub pgrp_node: *mut QueueNode<Process>,
+    pub pgrp_node: *mut QueueNode<*mut Process>,
 
     /** process name - XXX */
     pub name: *mut u8,
@@ -132,16 +132,16 @@ pub struct Process {
     pub stack_vm: *mut VmEntry,
 
     /** process threads */
-    pub threads: Queue<Thread>,
+    pub threads: Queue<*mut Thread>,
 
     /** threads join wait queue */
-    pub thread_join: Queue<Thread>,
+    pub thread_join: Queue<*mut Thread>,
 
     /** recieved signals queue */
     pub sig_queue: *mut Queue<isize>,
 
     /** dummy queue for children wait */
-    pub wait_queue: Queue<Thread>,
+    pub wait_queue: Queue<*mut Thread>,
 
     /** registered signal handlers */
     pub sigaction: [SignalAction; SIG_MAX + 1],
@@ -173,16 +173,16 @@ pub macro proc_uio {
 }
 
 /* all processes */
-static mut procs_queue: Queue<Process> = Queue::empty();
-pub static mut procs: *mut Queue<Process> = unsafe { &mut procs_queue };
+static mut procs_queue: Queue<*mut Process> = Queue::empty();
+pub static mut procs: *mut Queue<*mut Process> = unsafe { &mut procs_queue };
 
 /* all sessions */
-static mut sessions_queue: Queue<Session> = Queue::empty();
-pub static mut sessions: *mut Queue<Session> = unsafe { &mut sessions_queue };
+static mut sessions_queue: Queue<*mut Session> = Queue::empty();
+pub static mut sessions: *mut Queue<*mut Session> = unsafe { &mut sessions_queue };
 
 /* all process groups */
-static mut pgroups_queue: Queue<ProcessGroup> = Queue::empty();
-pub static mut pgroups: *mut Queue<ProcessGroup> = unsafe { &mut pgroups_queue };
+static mut pgroups_queue: Queue<*mut ProcessGroup> = Queue::empty();
+pub static mut pgroups: *mut Queue<*mut ProcessGroup> = unsafe { &mut pgroups_queue };
 
 //static mut pid_bitmap: *mut BitMap = &BitMap::empty(4096) as *const _ as *mut BitMap;
 static mut pid_bitmap: *mut BitMap = &bitmap_new!(4096) as *const _ as *mut BitMap;
@@ -331,7 +331,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 
     /* Kill all threads */
     while (*proc).threads.count > 0 {
-        let thread = (*proc).threads.dequeue();
+        let thread = (*proc).threads.dequeue().unwrap();
 
         if !(*thread).sleep_node.is_null() {
             /* thread is sleeping on some queue */

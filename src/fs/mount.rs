@@ -10,8 +10,8 @@ use crate::include::bits::errno::*;
 use crate::{print, malloc_define};
 use fs::vfs::registered_fs;
 
-static mut mounts_queue: Queue<Mountpoint> = Queue::empty();
-pub static mut mounts: *mut Queue<Mountpoint> = unsafe { &mut mounts_queue };
+static mut mounts_queue: Queue<*mut Mountpoint> = Queue::empty();
+pub static mut mounts: *mut Queue<*mut Mountpoint> = unsafe { &mut mounts_queue };
 
 malloc_define!(M_MOUNTPOINT, "mountpoint\0", "mount point structure\0");
 

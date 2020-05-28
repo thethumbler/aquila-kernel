@@ -11,7 +11,7 @@ malloc_define!(M_QNODE, "queue-node\0", "queue node structure\0");
 
 #[derive(Debug)]
 pub struct QueueNode<T> {
-    pub value: *mut T,
+    pub value: T,
     pub prev: *mut QueueNode<T>,
     pub next: *mut QueueNode<T>,
 
@@ -67,7 +67,7 @@ impl<'a, T> Iterator for QueueIterator<'a, T> {
     }
 }
 
-impl<T> Queue<T> {
+impl<T: Copy> Queue<T> {
     /** create a new statically allocated queue */
     pub const fn empty() -> Self {
         Self {
@@ -91,7 +91,7 @@ impl<T> Queue<T> {
         }
     }
 
-    pub unsafe fn enqueue(&mut self, value: *mut T) -> *mut QueueNode<T> {
+    pub unsafe fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {
         let mut node = kmalloc(core::mem::size_of::<QueueNode<T>>(), &M_QNODE, M_ZERO) as *mut QueueNode<T>;
         if node.is_null() {
             return core::ptr::null_mut();
@@ -114,9 +114,9 @@ impl<T> Queue<T> {
         return node;
     }
 
-    pub unsafe fn dequeue(&mut self) -> *mut T {
+    pub unsafe fn dequeue(&mut self) -> Option<T> {
         if self.count == 0 {
-            return core::ptr::null_mut();
+            return None
         }
 
         self.count -= 1;
@@ -137,39 +137,7 @@ impl<T> Queue<T> {
 
         kfree(head as *mut u8);
 
-        return value;
-    }
-
-    pub unsafe fn remove(&mut self, value: *mut T) {
-        if self.count == 0 {
-            return;
-        }
-
-        let mut qnode = self.head;
-
-        while !qnode.is_null() {
-            if (*qnode).value == value {
-                if (*qnode).prev.is_null() {
-                    /* head */
-                    self.dequeue();
-                } else if (*qnode).next.is_null() {
-                    /* tail */
-                    self.count -= 1;
-                    self.tail = (*self.tail).prev;
-                    (*self.tail).next = core::ptr::null_mut();
-                    kfree(qnode as *mut u8);
-                } else {
-                    self.count -= 1;
-                    (*(*qnode).prev).next = (*qnode).next;
-                    (*(*qnode).next).prev = (*qnode).prev;
-                    kfree(qnode as *mut u8);
-                }
-
-                break;
-            }
-
-            qnode = (*qnode).next;
-        }
+        return Some(value);
     }
 
     pub unsafe fn node_remove(&mut self, qnode: *mut QueueNode<T>) {
@@ -206,6 +174,40 @@ impl<T> Queue<T> {
                 cur: (*self).head,
                 phantom: core::marker::PhantomData,
             }
+        }
+    }
+}
+
+impl<T: Copy + PartialEq> Queue<T> {
+    pub unsafe fn remove(&mut self, value: T) {
+        if self.count == 0 {
+            return;
+        }
+
+        let mut qnode = self.head;
+
+        while !qnode.is_null() {
+            if (*qnode).value == value {
+                if (*qnode).prev.is_null() {
+                    /* head */
+                    self.dequeue();
+                } else if (*qnode).next.is_null() {
+                    /* tail */
+                    self.count -= 1;
+                    self.tail = (*self.tail).prev;
+                    (*self.tail).next = core::ptr::null_mut();
+                    kfree(qnode as *mut u8);
+                } else {
+                    self.count -= 1;
+                    (*(*qnode).prev).next = (*qnode).next;
+                    (*(*qnode).next).prev = (*qnode).prev;
+                    kfree(qnode as *mut u8);
+                }
+
+                break;
+            }
+
+            qnode = (*qnode).next;
         }
     }
 }

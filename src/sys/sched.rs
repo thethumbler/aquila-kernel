@@ -8,8 +8,8 @@ use crate::include::core::arch::*;
 
 use crate::{print};
 
-static mut ready_queue_queue: Queue<Thread> = Queue::empty();
-pub static mut ready_queue: *mut Queue<Thread> = unsafe { &mut ready_queue_queue };
+static mut ready_queue_queue: Queue<*mut Thread> = Queue::empty();
+pub static mut ready_queue: *mut Queue<*mut Thread> = unsafe { &mut ready_queue_queue };
 
 pub static mut _curthread: *mut Thread = core::ptr::null_mut();
 
@@ -89,7 +89,7 @@ pub unsafe fn schedule() {
         kernel_idle();
     }
 
-    curthread!() = (*ready_queue).dequeue();
+    curthread!() = (*ready_queue).dequeue().unwrap();
     (*curthread!()).sched_node = core::ptr::null_mut();
 
     if (*curthread!()).spawned != 0 {

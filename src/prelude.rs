@@ -6,6 +6,7 @@ pub use ds::*;
 pub use mm::kvmem::*;
 pub use kern::string::*;
 pub use alloc::boxed::Box;
+pub use alloc::rc::Rc;
 pub use crate::{print};
 
 //pub struct AllocTag {

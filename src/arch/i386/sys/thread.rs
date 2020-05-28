@@ -52,8 +52,8 @@ pub unsafe fn arch_thread_switch(thread: *mut Thread) {
     x86_fpu_disable();
 
     if (*(*(*thread).owner).sig_queue).count != 0 {
-        let sig = (*(*(*thread).owner).sig_queue).dequeue() as usize;
-        arch_handle_signal(sig);
+        let sig = (*(*(*thread).owner).sig_queue).dequeue().unwrap();
+        arch_handle_signal(sig as usize);
         /* if we get back here, the signal was ignored */
     }
 

@@ -32,7 +32,7 @@ pub struct VmEntry {
     pub off: usize,
 
     /** the queue node this vm entry is stored in */
-    pub qnode: *mut QueueNode<VmEntry>
+    pub qnode: *mut QueueNode<*mut VmEntry>
 }
 
 impl VmEntry {

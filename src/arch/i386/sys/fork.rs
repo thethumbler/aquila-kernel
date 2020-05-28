@@ -48,7 +48,7 @@ pub unsafe fn arch_proc_fork(thread: *mut Thread, fork: *mut Process) -> isize {
     (*ftarch).eip = x86_fork_return as *const u8 as usize;
     (*ftarch).esp = fork_regs as *const u8 as usize;
 
-    let fthread: *mut Thread = (*(*fork).threads.head).value as *mut Thread;
+    let fthread: *mut Thread = (*(*fork).threads.head).value;
     (*fthread).arch = ftarch as *mut u8;
 
     (*ftarch).fpu_enabled = 0;

@@ -18,7 +18,7 @@ pub struct AddressSpace {
     pub pmap: *mut PhysicalMap,
 
     /** virtual memory regions inside the vm space */
-    pub vm_entries: Queue<VmEntry>,
+    pub vm_entries: Queue<*mut VmEntry>,
 }
 
 unsafe impl Sync for AddressSpace {}
@@ -48,13 +48,13 @@ impl AddressSpace {
 
         let mut end = vm_entry.base + vm_entry.size;
 
-        let mut cur = core::ptr::null_mut() as *mut QueueNode<VmEntry>;
+        let mut cur = core::ptr::null_mut() as *mut QueueNode<*mut VmEntry>;
         let mut prev_end = 0usize;
 
         if alloc {
             /* look for the last valid entry */
             for qnode in queue.iter() {
-                let cur_vm_entry = unsafe { &*(qnode.value as *mut VmEntry) };
+                let cur_vm_entry = unsafe { &mut *(qnode.value as *mut VmEntry) };
 
                 if cur_vm_entry.base - prev_end >= vm_entry.size {
                     vm_entry.base = cur_vm_entry.base - vm_entry.size;
@@ -66,10 +66,11 @@ impl AddressSpace {
         }
 
         for qnode in queue.iter() {
-            let cur_vm_entry = unsafe { &*(qnode.value as *mut VmEntry) };
+            let cur_vm_entry = unsafe { &*qnode.value };
 
             if vm_entry.base != 0 && cur_vm_entry.base >= end && prev_end <= vm_entry.base {
-                cur = qnode as *const _ as *mut QueueNode<VmEntry>;
+                // XXX
+                cur = qnode as *const _ as *mut QueueNode<*mut VmEntry>;
                 break;
             }
 
@@ -82,18 +83,18 @@ impl AddressSpace {
         }
 
         unsafe {
-            let node = kmalloc(core::mem::size_of::<QueueNode<VmEntry>>(), &M_QNODE, M_ZERO) as *mut QueueNode<VmEntry>;
+            let node = kmalloc(core::mem::size_of::<QueueNode<*mut VmEntry>>(), &M_QNODE, M_ZERO) as *mut QueueNode<*mut VmEntry>;
 
             (*node).value = vm_entry;
             (*node).next  = cur;
             (*node).prev  = (*cur).prev;
 
             if !(*cur).prev.is_null() {
-                (*(*cur).prev).next = &*node as *const _ as *mut QueueNode<VmEntry>;
+                (*(*cur).prev).next = &mut *node;
             }
 
-            (*cur).prev = &*node as *const _ as *mut QueueNode<VmEntry>;
-            vm_entry.qnode = &*node as *const _ as *mut QueueNode<VmEntry>;
+            (*cur).prev = &mut *node;
+            vm_entry.qnode = &mut *node;
             (*queue).count += 1;
 
             return 0;
@@ -161,9 +162,9 @@ pub unsafe fn vm_space_destroy(vm_space: *mut AddressSpace) -> () {
     let vm_entries = &mut (*vm_space).vm_entries;
     let mut vm_entry = (*vm_entries).dequeue();
 
-    while !vm_entry.is_null() {
-        vm_entry_destroy(vm_entry);
-        kfree(vm_entry as *mut u8);
+    while !vm_entry.is_none() {
+        vm_entry_destroy(vm_entry.unwrap());
+        kfree(vm_entry.unwrap() as *mut u8);
         vm_entry = (*vm_entries).dequeue();
     }
 

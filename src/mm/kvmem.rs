@@ -15,8 +15,8 @@ use crate::{page_round, page_align, malloc_define, print};
 
 malloc_define!(M_BUFFER, "buffer\0", "generic buffer\0");
 
-pub static mut malloc_types_queue: Queue<MallocType> = Queue::empty();
-pub static mut malloc_types: *mut Queue<MallocType> = unsafe { &mut malloc_types_queue };
+pub static mut malloc_types_queue: Queue<*mut MallocType> = Queue::empty();
+pub static mut malloc_types: *mut Queue<*mut MallocType> = unsafe { &mut malloc_types_queue };
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -79,13 +79,13 @@ pub unsafe fn kvmem_setup() {
     nodes[0].size = (-1isize) as usize;
     nodes[0].next = LAST_NODE_INDEX;
 
-    /* We have to set qnode to an arbitrary value since
+    /* we have to set qnode to an arbitrary value since
      * enqueue will use kmalloc which would try to enqueue
      * M_QNODE type if qnode == NULL, getting us in an
      * infinite loop
      */
     let m_qnode = &M_QNODE as *const _ as *mut MallocType;
-    core::ptr::write_volatile(&mut (*m_qnode).qnode, 0xDEADBEEF as *mut QueueNode<MallocType>);
+    core::ptr::write_volatile(&mut (*m_qnode).qnode, 0xDEADBEEF as *mut QueueNode<*mut MallocType>);
     (*m_qnode).qnode = (*malloc_types).enqueue(m_qnode);
 }
 
