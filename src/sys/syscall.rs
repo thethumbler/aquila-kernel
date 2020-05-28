@@ -364,8 +364,8 @@ unsafe fn sys_waitpid(pid: pid_t, stat_loc: *mut isize, options: usize) {
         loop {
             let mut found = 0;
 
-            for node in (*procs).iter() {
-                let proc = (*node).value as *mut Process;
+            for node in procs.iter() {
+                let proc = (*node).value;
 
                 if (*proc).parent != curproc!() {
                     continue;

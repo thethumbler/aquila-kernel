@@ -122,12 +122,7 @@ pub macro proc_uio {
 }
 
 /* all processes */
-static mut procs_queue: Queue<*mut Process> = Queue::empty();
-pub static mut procs: *mut Queue<*mut Process> = unsafe { &mut procs_queue };
-
-/* all process groups */
-static mut pgroups_queue: Queue<*mut ProcessGroup> = Queue::empty();
-pub static mut pgroups: *mut Queue<*mut ProcessGroup> = unsafe { &mut pgroups_queue };
+pub static mut procs: Queue<*mut Process> = Queue::empty();
 
 //static mut pid_bitmap: *mut BitMap = &BitMap::empty(4096) as *const _ as *mut BitMap;
 static mut pid_bitmap: *mut BitMap = &bitmap_new!(4096) as *const _ as *mut BitMap;
@@ -195,7 +190,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
     (*proc).running = 1;
 
     /* add process to all processes queue */
-    (*procs).enqueue(proc);
+    procs.enqueue(proc);
 
     if !proc_ref.is_null() {
         *proc_ref = proc;
@@ -208,7 +203,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
 #[no_mangle]
 pub unsafe extern "C" fn proc_pid_find(pid: pid_t) -> *mut Process {
     //queue_for (node, procs) {
-    for qnode in (*procs).iter() {
+    for qnode in procs.iter() {
         let proc = (*qnode).value as *mut Process;
 
         if (*proc).pid == pid {
@@ -322,7 +317,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
     core::mem::take(&mut (*proc).sig_queue);
 
     /* mark all children as orphans */
-    for qnode in (*procs).iter() {
+    for qnode in procs.iter() {
         let _proc = (*qnode).value as *mut Process;
 
         if (*_proc).parent == proc {
@@ -354,7 +349,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 pub unsafe extern "C" fn proc_reap(proc: *mut Process) -> isize {
     proc_pid_free((*proc).pid);
 
-    (*procs).remove(proc);
+    procs.remove(proc);
     kfree(proc as *mut u8);
 
     return 0;

@@ -15,10 +15,8 @@ use crate::{page_round, page_align, malloc_define, print};
 
 malloc_define!(M_BUFFER, "buffer\0", "generic buffer\0");
 
-pub static mut malloc_types_queue: Queue<*mut MallocType> = Queue::empty();
-pub static mut malloc_types: *mut Queue<*mut MallocType> = unsafe { &mut malloc_types_queue };
+pub static mut malloc_types: Queue<*mut MallocType> = Queue::empty();
 
-#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct ObjectNode {
     addr: usize, /* Offseting (1GiB), 4-bytes aligned objects */
@@ -66,8 +64,6 @@ macro_rules! node_size {
 const LAST_NODE_INDEX: usize = 100000;
 const MAX_NODE_SIZE: usize   = (1 << 26) - 1;
 
-//struct kvmem_node *nodes = (struct kvmem_node *) KVMEM_NODES;
-#[no_mangle]
 pub static mut nodes: [ObjectNode; LAST_NODE_INDEX] = [ObjectNode::empty(); LAST_NODE_INDEX];
 
 pub unsafe fn kvmem_setup() {
@@ -86,18 +82,18 @@ pub unsafe fn kvmem_setup() {
      */
     let m_qnode = &M_QNODE as *const _ as *mut MallocType;
     core::ptr::write_volatile(&mut (*m_qnode).qnode, 0xDEADBEEF as *mut QueueNode<*mut MallocType>);
-    (*m_qnode).qnode = (*malloc_types).enqueue(m_qnode);
+    (*m_qnode).qnode = malloc_types.enqueue(m_qnode);
 }
 
 static mut first_free_node: usize = 0;
 unsafe fn get_node() -> usize {
-    for i in first_free_node..(LAST_NODE_INDEX as usize) {
+    for i in first_free_node..LAST_NODE_INDEX {
         if nodes[i].size == 0 {
             return i;
         }
     }
 
-    panic!("Can't find an unused node");
+    panic!("cannot find an unused node");
 }
 
 unsafe fn release_node(i: usize) {
@@ -107,33 +103,22 @@ unsafe fn release_node(i: usize) {
 
     //memset(&nodes[i], 0, sizeof(struct kvmem_node));
 
+    nodes[i].size = 0;
     nodes[i].free = true;
 }
 
 unsafe fn get_first_fit_free_node(size: usize) -> usize {
     let mut i = first_free_node;
 
-    while !nodes[i].free || (nodes[i].size as usize) < size {
+    while !nodes[i].free || nodes[i].size < size {
         if nodes[i].next == LAST_NODE_INDEX {
-            print!("cannot find a free node\n");
-            panic!("Can't find a free node");
+            panic!("cannot find a free node");
         }
 
         i = nodes[i].next as usize;
     }
 
     return i;
-}
-
-unsafe fn print_node(i: usize) {
-    /*
-    print!(b"Node[%d]\n\0".as_ptr(), i);
-    print!(b"   |_ Addr   : %x\n\0".as_ptr(), node_addr!(nodes[i]));
-    print!(b"   |_ free?  : %s\n\0".as_ptr(), if nodes[i].free { b"yes\0".as_ptr() } else { b"no\0".as_ptr() });
-    print!(b"   |_ Size   : %d B [ %d KiB ]\n\0".as_ptr(),
-        node_size!(nodes[i]), node_size!(nodes[i])/1024);
-    print!(b"   |_ Next   : %d\n\0".as_ptr(), nodes[i].next);
-    */
 }
 
 pub unsafe fn kmalloc(size: usize, objtype: *const MallocType, flags: usize) -> *mut u8 {
@@ -144,16 +129,16 @@ pub unsafe fn kmalloc(size: usize, objtype: *const MallocType, flags: usize) -> 
     /* round size to 4-byte units */
     let size = (size + 3)/4;
 
-    /* Look for a first fit free node */
+    /* look for a first fit free node */
     let i = get_first_fit_free_node(size);
 
     //printk(b"allocated node %d\n\0".as_ptr(), i);
 
-    /* Mark it as used */
+    /* mark it as used */
     nodes[i].free = false;
 
-    /* Split the node if necessary */
-    if nodes[i].size as usize > size {
+    /* split the node if necessary */
+    if nodes[i].size > size {
         let n = get_node();
 
         nodes[n].addr = nodes[i].addr + size;
@@ -177,8 +162,6 @@ pub unsafe fn kmalloc(size: usize, objtype: *const MallocType, flags: usize) -> 
     let map_end  = page_round!(node_addr!(nodes[i]) + node_size!(nodes[i]));
     let map_size = (map_end - map_base)/PAGE_SIZE;
 
-    //printk(b"map_size = %d\n\0".as_ptr(), map_size);
-
     if map_size > 0 {
         let mut vm_entry = VmEntry {
             paddr: 0,
@@ -195,7 +178,7 @@ pub unsafe fn kmalloc(size: usize, objtype: *const MallocType, flags: usize) -> 
     }
 
     if (*objtype).qnode.is_null() {
-        (*objtype).qnode = (*malloc_types).enqueue(objtype);
+        (*objtype).qnode = malloc_types.enqueue(objtype);
     }
 
     let obj = node_addr!(nodes[i]);
@@ -215,11 +198,11 @@ pub unsafe fn kfree(ptr: *mut u8) {
     let ptr = ptr as usize;
 
     if ptr < KVMEM_BASE as usize {
-        /* That's not even allocatable */
+        /* that's not even allocatable */
         return;
     }
 
-    /* Look for the node containing _ptr -- merge sequential free nodes */
+    /* look for the node containing _ptr -- merge sequential free nodes */
     let mut cur_node = 0;
     let mut prev_node = 0;
 
@@ -265,10 +248,6 @@ pub unsafe fn kfree(ptr: *mut u8) {
 
         nodes[cur_node].objtype = core::ptr::null_mut();
     }
-
-    //if (debug_kmalloc) {
-    //    printk("NODE_SIZE %d\n", NODE_SIZE(nodes[cur_node]));
-    //}
 
     kvmem_used -= node_size!(nodes[cur_node]);
     kvmem_obj_cnt -= 1;
@@ -332,16 +311,3 @@ pub unsafe fn kfree(ptr: *mut u8) {
         cur_node = nodes[cur_node].next;
     }
 }
-
-/*
-void dump_nodes(void)
-{
-    printk("Nodes dump\n");
-    unsigned i = 0;
-    while (i < LAST_NODE_INDEX) {
-        print_node(i);
-        if (nodes[i].next == LAST_NODE_INDEX) break;
-        i = nodes[i].next;
-    }
-}
-*/
