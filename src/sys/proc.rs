@@ -45,7 +45,7 @@ pub struct Session {
     pub sid: pid_t,
 
     /** process groups */
-    pub pgps: *mut Queue<*mut ProcessGroup>,
+    pub pgps: Option<Box<Queue<*mut ProcessGroup>>>,
 
     /** session leader */
     pub leader: *mut Process,
@@ -75,7 +75,7 @@ pub struct ProcessGroup {
     pub session_node: *mut QueueNode<*mut ProcessGroup>,
 
     /** processes */
-    pub procs: *mut Queue<*mut Process>,
+    pub procs: Option<Box<Queue<*mut Process>>>,
 
     /** process group leader */
     pub leader: *mut Process,
@@ -138,7 +138,7 @@ pub struct Process {
     pub thread_join: Queue<*mut Thread>,
 
     /** recieved signals queue */
-    pub sig_queue: *mut Queue<isize>,
+    pub sig_queue: Option<Box<Queue<isize>>>,
 
     /** dummy queue for children wait */
     pub wait_queue: Queue<*mut Thread>,
@@ -290,22 +290,20 @@ pub unsafe extern "C" fn proc_init(proc: *mut Process) -> isize {
     if (*proc).fds.is_null() {
         err = -ENOMEM;
 
-        if !(*proc).sig_queue.is_null() {
-            kfree((*proc).sig_queue as *mut u8);
+        if !(*proc).sig_queue.is_none() {
+            core::mem::take(&mut (*proc).sig_queue);
         }
 
         return err;
     }
 
     /* initalize signals queue */
-    (*proc).sig_queue = Queue::new();
+    (*proc).sig_queue = Some(Queue::alloc());
 
-    if (*proc).sig_queue.is_null() {
+    if (*proc).sig_queue.is_none() {
         err = -ENOMEM;
 
         kfree((*proc).fds as *mut u8);
-        kfree((*proc).sig_queue as *mut u8);
-
         return err;
     }
 
@@ -370,13 +368,14 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
     kfree((*proc).fds as *mut u8);
     kfree((*proc).cwd as *mut u8);
 
-    while (*(*proc).sig_queue).count > 0 {
-        (*(*proc).sig_queue).dequeue();
+    while (*proc).sig_queue.as_ref().unwrap().count > 0 {
+        (*proc).sig_queue.as_mut().unwrap().dequeue();
     }
 
-    kfree((*proc).sig_queue as *mut u8);
+    // XXX
+    core::mem::take(&mut (*proc).sig_queue);
 
-    /* Mark all children as orphans */
+    /* mark all children as orphans */
     for qnode in (*procs).iter() {
         let _proc = (*qnode).value as *mut Process;
 
@@ -388,7 +387,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
     kfree((*proc).name as *mut u8);
 
     /* XXX */
-    (*(*(*proc).pgrp).procs).node_remove((*proc).pgrp_node);
+    (*(*proc).pgrp).procs.as_mut().unwrap().node_remove((*proc).pgrp_node);
 
     /* Wakeup parent if it is waiting for children */
     if !(*proc).parent.is_null() {
@@ -457,28 +456,28 @@ pub unsafe extern "C" fn session_new(proc: *mut Process) -> isize {
         return -ENOMEM;
     }
 
-    (*session).pgps = Queue::new();
-    if (*session).pgps.is_null() {
+    (*session).pgps = Some(Queue::alloc());
+    if (*session).pgps.is_none() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*pgrp).procs = Queue::new();
-    if (*pgrp).procs.is_null() {
+    (*pgrp).procs = Some(Queue::alloc());
+    if (*pgrp).procs.is_none() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*pgrp).session_node = (*(*session).pgps).enqueue(pgrp);
+    (*pgrp).session_node = (*session).pgps.as_mut().unwrap().enqueue(pgrp);
     if (*pgrp).session_node.is_null() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*proc).pgrp_node = (*(*pgrp).procs).enqueue(proc);
+    (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
     if (*proc).pgrp_node.is_null() {
         //goto e_nomem;
         //FIXME
@@ -513,30 +512,30 @@ pub unsafe extern "C" fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut Proc
     (*pgrp).session = (*(*proc).pgrp).session;
 
     /* remove the process from the old process group */
-    (*(*(*proc).pgrp).procs).node_remove((*proc).pgrp_node);
+    (*(*proc).pgrp).procs.as_mut().unwrap().node_remove((*proc).pgrp_node);
 
-    (*pgrp).procs = Queue::new();
-    if (*pgrp).procs.is_null() {
+    (*pgrp).procs = Some(Queue::alloc());
+    if (*pgrp).procs.is_none() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*proc).pgrp_node = (*(*pgrp).procs).enqueue(proc);
+    (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
     if (*proc).pgrp_node.is_null() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*pgrp).session_node = (*(*(*(*proc).pgrp).session).pgps).enqueue(pgrp);
+    (*pgrp).session_node = (*(*(*proc).pgrp).session).pgps.as_mut().unwrap().enqueue(pgrp);
     if (*pgrp).session_node.is_null() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    if (*(*(*proc).pgrp).procs).count == 0 {
+    if (*(*proc).pgrp).procs.as_ref().unwrap().count == 0 {
         /* TODO */
     }
 

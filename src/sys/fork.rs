@@ -55,7 +55,7 @@ pub unsafe fn copy_fds(parent: *mut Process, fork: *mut Process) -> isize {
 
 pub unsafe fn fork_proc_copy(parent: *mut Process, fork: *mut Process) -> isize {
     (*fork).pgrp = (*parent).pgrp;
-    (*fork).pgrp_node = (*(*(*fork).pgrp).procs).enqueue(fork);
+    (*fork).pgrp_node = (*(*fork).pgrp).procs.as_mut().unwrap().enqueue(fork);
 
     (*fork).mask = (*parent).mask;
     (*fork).uid  = (*parent).uid;
@@ -124,8 +124,8 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     }
 
     /* allocate new signals queue */
-    (*fork).sig_queue = Queue::new();
-    if (*fork).sig_queue.is_null() {
+    (*fork).sig_queue = Some(Queue::alloc());
+    if (*fork).sig_queue.is_none() {
         err = -ENOMEM;
         //goto error;
         //FIXME

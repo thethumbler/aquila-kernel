@@ -36,8 +36,8 @@ pub unsafe fn posix_file_write(file: *mut FileDescriptor, buf: *mut u8, size: si
             (*file).offset += retval;
             
             /* wake up all sleeping readers if a `read_queue' is attached */
-            if !(*(*file).backend.vnode).read_queue.is_null() {
-                thread_queue_wakeup((*(*file).backend.vnode).read_queue);
+            if !(*(*file).backend.vnode).read_queue.is_none() {
+                thread_queue_wakeup((*(*file).backend.vnode).read_queue.as_mut().unwrap().as_mut());
             }
 
             /* return written bytes count */
@@ -61,7 +61,7 @@ pub unsafe fn posix_file_write(file: *mut FileDescriptor, buf: *mut u8, size: si
             }
 
             /* sleep on the file writers queue */
-            thread_queue_sleep((*(*file).backend.vnode).write_queue);
+            thread_queue_sleep((*(*file).backend.vnode).write_queue.as_mut().unwrap().as_mut());
         }
         
         /* store written bytes count */
@@ -71,8 +71,8 @@ pub unsafe fn posix_file_write(file: *mut FileDescriptor, buf: *mut u8, size: si
         (*file).offset += retval;
 
         /* wake up all sleeping readers if a `read_queue' is attached */
-        if !(*(*file).backend.vnode).read_queue.is_null() {
-            thread_queue_wakeup((*(*file).backend.vnode).read_queue);
+        if !(*(*file).backend.vnode).read_queue.is_none() {
+            thread_queue_wakeup((*(*file).backend.vnode).read_queue.as_mut().unwrap().as_mut());
         }
 
         return retval;

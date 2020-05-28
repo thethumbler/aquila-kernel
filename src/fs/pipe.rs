@@ -102,15 +102,16 @@ pub unsafe fn pipefs_pipe(read: *mut FileDescriptor, write: *mut FileDescriptor)
         return -ENOMEM;
     }
 
-    (*(*read).backend.vnode).read_queue = Queue::new();
-    if (*(*read).backend.vnode).read_queue.is_null() {
+    (*(*read).backend.vnode).read_queue = Some(Queue::alloc());
+    if (*(*read).backend.vnode).read_queue.is_none() {
         kfree((*read).backend.vnode as *mut u8);
         kfree((*write).backend.vnode as *mut u8);
         pipefs_pfree(pipe);
         return -ENOMEM;
     }
 
-    (*(*write).backend.vnode).write_queue = (*(*read).backend.vnode).read_queue;
+    // XXX
+    //(*(*write).backend.vnode).write_queue = (*(*read).backend.vnode).read_queue;
 
     (*(*read).backend.vnode).fs  = &pipefs as *const _ as *mut Filesystem;
     (*(*read).backend.vnode).p   = pipe as *mut u8;

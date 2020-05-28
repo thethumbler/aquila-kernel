@@ -79,16 +79,8 @@ impl<T: Copy> Queue<T> {
         }
     }
 
-    pub fn new() -> *mut Queue<T> {
-        unsafe {
-            let queue = kmalloc(core::mem::size_of::<Queue<T>>(), &M_QUEUE, M_ZERO) as *mut Queue<T>;
-            
-            if queue.is_null() {
-                return core::ptr::null_mut();
-            }
-
-            return queue;
-        }
+    pub fn alloc() -> Box<Queue<T>> {
+        Box::new_tagged(&M_QUEUE, Queue::empty())
     }
 
     pub unsafe fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {

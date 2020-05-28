@@ -101,7 +101,7 @@ pub unsafe fn signal_proc_send(proc: *mut Process, signal: isize) -> isize {
     if proc == curproc!() {
         arch::handle_signal(signal as usize);
     } else {
-        (*(*proc).sig_queue).enqueue(signal);
+        (*proc).sig_queue.as_mut().unwrap().enqueue(signal);
 
         /* wake up main thread if sleeping - XXX */
         let thread = (*(*proc).threads.head).value as *mut Thread;
@@ -115,8 +115,8 @@ pub unsafe fn signal_proc_send(proc: *mut Process, signal: isize) -> isize {
 }
 
 pub unsafe fn signal_pgrp_send(pg: *mut ProcessGroup, signal: isize) -> isize {
-    for qnode in (*(*pg).procs).iter() {
-        let proc = (*qnode).value as *mut Process;
+    for qnode in (*pg).procs.as_mut().unwrap().iter() {
+        let proc = (*qnode).value;
         signal_proc_send(proc, signal);
     }
 
