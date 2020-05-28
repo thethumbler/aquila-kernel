@@ -3,8 +3,6 @@ use fs::*;
 use bits::dirent::*;
 use mm::*;
 
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-
 pub unsafe fn vfs_mknod(path: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     let mut ret = 0;
 

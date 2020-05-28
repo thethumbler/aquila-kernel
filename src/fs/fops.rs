@@ -8,8 +8,6 @@ use dev::dev::*;
 use dev::kdev::*;
 use net::socket::*;
 
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-
 #[derive(Clone)]
 pub struct FileOps {
     pub _open:      Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
@@ -59,8 +57,8 @@ pub unsafe fn vfs_file_open(file: *mut FileDescriptor) -> isize {
         return -EISDIR;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_open(&mut VNODE_DEV!((*file).backend.vnode), file);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_open(&mut vnode_dev!((*file).backend.vnode), file);
     }
 
     //if ((*(*(*file).backend.vnode).fs).fops.open as *const u8).is_null() {
@@ -83,8 +81,8 @@ pub unsafe fn vfs_file_read(file: *mut FileDescriptor, buf: *mut u8, nbytes: usi
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_read(&mut VNODE_DEV!((*file).backend.vnode), file, buf, nbytes);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_read(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -111,8 +109,8 @@ pub unsafe fn vfs_file_write(file: *mut FileDescriptor, buf: *mut u8, nbytes: us
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_write(&mut VNODE_DEV!((*file).backend.vnode), file, buf, nbytes);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_write(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -135,8 +133,8 @@ pub unsafe fn vfs_file_ioctl(file: *mut FileDescriptor, request: usize, argp: *m
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_ioctl(&mut VNODE_DEV!((*file).backend.vnode), file, request as isize, argp);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_ioctl(&mut vnode_dev!((*file).backend.vnode), file, request as isize, argp);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -159,8 +157,8 @@ pub unsafe fn vfs_file_lseek(file: *mut FileDescriptor, offset: off_t, whence: i
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_lseek(&mut VNODE_DEV!((*file).backend.vnode), file, offset, whence);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_lseek(&mut vnode_dev!((*file).backend.vnode), file, offset, whence);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -207,8 +205,8 @@ pub unsafe fn vfs_file_close(file: *mut FileDescriptor) -> isize {
         return socket_shutdown(file, SHUT_RDWR as isize);
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_close(&mut VNODE_DEV!((*file).backend.vnode), file);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_close(&mut vnode_dev!((*file).backend.vnode), file);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -235,7 +233,7 @@ pub unsafe fn vfs_file_trunc(file: *mut FileDescriptor, len: off_t) -> isize {
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
+    if (*(*file).backend.vnode).is_device() {
         return -EINVAL;
     }
 
@@ -259,8 +257,8 @@ pub unsafe fn vfs_file_can_read(file: *mut FileDescriptor, size: usize) -> isize
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_can_read(&mut VNODE_DEV!((*file).backend.vnode), file, size);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_can_read(&mut vnode_dev!((*file).backend.vnode), file, size);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -283,8 +281,8 @@ pub unsafe fn vfs_file_can_write(file: *mut FileDescriptor, size: usize) -> isiz
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_can_write(&mut VNODE_DEV!((*file).backend.vnode), file, size);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_can_write(&mut vnode_dev!((*file).backend.vnode), file, size);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {
@@ -303,8 +301,8 @@ pub unsafe fn vfs_file_eof(file: *mut FileDescriptor) -> isize {
         return -EINVAL;
     }
 
-    if ISDEV!((*file).backend.vnode) {
-        return kdev_file_eof(&mut VNODE_DEV!((*file).backend.vnode), file);
+    if (*(*file).backend.vnode).is_device() {
+        return kdev_file_eof(&mut vnode_dev!((*file).backend.vnode), file);
     }
 
     //if (*(*file).backend.vnode).fs.is_null() {

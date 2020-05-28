@@ -70,19 +70,19 @@ unsafe fn ttydev_mux(dd: *mut DeviceDescriptor) -> *mut Device {
 }
 
 unsafe fn ttydev_probe() -> isize {
-    kdev_chrdev_register(4, &mut sttydev);
-    kdev_chrdev_register(5, &mut ttydev);
+    kdev_chrdev_register(4, &mut STTYDEV);
+    kdev_chrdev_register(5, &mut TTYDEV);
     return 0;
 }
 
-static mut sttydev: Device = Device {
+static mut STTYDEV: Device = Device {
     name: "sttydev",
     mux:  Some(sttydev_mux),
 
     ..Device::none()
 };
 
-static mut ttydev: Device = Device {
+static mut TTYDEV: Device = Device {
     name:  "ttydev",
     mux:   Some(ttydev_mux),
 

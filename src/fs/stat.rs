@@ -1,11 +1,9 @@
 use prelude::*;
-use fs::*;
 
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
+use fs::*;
+use dev::*;
 
 pub unsafe fn vfs_stat(vnode: *mut Vnode, buf: *mut Stat) -> isize {
-    //vfs_log(LOG_DEBUG, "vfs_stat(vnode=%p, buf=%p)\n", vnode, buf);
-
     (*buf).st_dev   = (*vnode).dev;
     (*buf).st_ino   = (*vnode).ino as u16;
     (*buf).st_mode  = (*vnode).mode;
@@ -21,9 +19,6 @@ pub unsafe fn vfs_stat(vnode: *mut Vnode, buf: *mut Stat) -> isize {
     return 0;
 }
 
-/**
- * \ingroup vfs
- */
 #[repr(C)]
 pub struct Stat {
     pub st_dev: u16,

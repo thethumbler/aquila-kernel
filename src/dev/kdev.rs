@@ -1,37 +1,21 @@
 use prelude::*;
+
+use dev::dev::*;
 use fs::*;
 use mm::*;
 
-use crate::dev::dev::Device;
-use crate::dev::dev::DeviceDescriptor;
-use crate::kern::print::cstr;
-
-use crate::{malloc_define, print};
-
 malloc_define!(M_KDEV_BLK, b"kdev-blk\0", b"kdev block buffer\0");
 
-macro max {
-    ($a:expr, $b:expr) => {
-        if $a > $b { $a } else { $b }
-    }
-}
-
-macro min {
-    ($a:expr, $b:expr) => {
-        if $a > $b { $a } else { $b }
-    }
-}
-
-static mut chrdev: [*mut Device; 256] = [core::ptr::null_mut(); 256];
-static mut blkdev: [*mut Device; 256] = [core::ptr::null_mut(); 256];
+static mut CHRDEV: [*mut Device; 256] = [core::ptr::null_mut(); 256];
+static mut BLKDEV: [*mut Device; 256] = [core::ptr::null_mut(); 256];
 
 #[inline]
 unsafe fn kdev_get(dd: *mut DeviceDescriptor) -> *mut Device {
     let mut dev = core::ptr::null_mut();
 
     match (*dd).devtype {
-        S_IFCHR => { dev = chrdev[(*dd).major as usize]; },
-        S_IFBLK => { dev = blkdev[(*dd).major as usize]; },
+        S_IFCHR => { dev = CHRDEV[(*dd).major as usize]; },
+        S_IFBLK => { dev = BLKDEV[(*dd).major as usize]; },
         _ => {}
     };
 
@@ -393,28 +377,16 @@ pub unsafe fn kdev_file_eof(dd: *mut DeviceDescriptor, file: *mut FileDescriptor
     return (*dev).fops._eof.unwrap()(file);
 }
 
-/**
- * \ingroup kdev
- * \brief register a new character device
- */
 pub unsafe fn kdev_chrdev_register(major: devid_t, dev: *mut Device) {
-    chrdev[major as usize] = dev; /* XXX */
+    CHRDEV[major as usize] = dev; /* XXX */
     print!("kdev: registered chrdev {}: {}\n", major, (*dev).name);
 }
 
-/**
- * \ingroup kdev
- * \brief register a new block device
- */
 pub unsafe fn kdev_blkdev_register(major: devid_t, dev: *mut Device) {
-    blkdev[major as usize] = dev; /* XXX */
+    BLKDEV[major as usize] = dev; /* XXX */
     print!("kdev: registered blkdev {}: {}\n", major, (*dev).name);
 }
 
-/**
- * \ingroup kdev
- * \brief initialize kdev subsystem
- */
 pub unsafe fn kdev_init() {
     print!("kdev: initializing\n");
 }

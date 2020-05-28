@@ -1,10 +1,8 @@
 use prelude::*;
 use fs::*;
-use dev::dev::*;
+use dev::*;
 use dev::kdev::*;
 use mm::*;
-
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
 
 pub unsafe fn vfs_vmknod(dir: *mut Vnode, name: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     /* invalid request */
@@ -93,8 +91,8 @@ pub unsafe fn vfs_map(vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> is
         return -EINVAL;
     }
 
-    if ISDEV!(vnode) {
-        return kdev_map(&mut VNODE_DEV!(vnode), vm_space, vm_entry);
+    if (*vnode).is_device() {
+        return kdev_map(&mut vnode_dev!(vnode), vm_space, vm_entry);
     }
 
     //if ((*(*vnode).fs).vops.map as *const u8).is_null() {

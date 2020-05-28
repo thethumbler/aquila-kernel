@@ -23,7 +23,7 @@ pub static mut rconsole: Console = Console {};
 macro_rules! print {
     ($($arg:tt)*) => {
         unsafe {
-            core::fmt::write(&mut $crate::kern::print::rconsole, core::format_args!($($arg)*))
+            core::fmt::write(&mut $crate::kern::print::rconsole, core::format_args!($($arg)*)).unwrap()
         }
     };
 }

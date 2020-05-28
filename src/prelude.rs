@@ -32,3 +32,15 @@ pub trait TaggedAllocator<T> {
 }
 
 impl<T> TaggedAllocator<T> for Box<T> {}
+
+pub macro max {
+    ($a:expr, $b:expr) => {
+        if $a > $b { $a } else { $b }
+    }
+}
+
+pub macro min {
+    ($a:expr, $b:expr) => {
+        if $a > $b { $a } else { $b }
+    }
+}

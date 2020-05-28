@@ -144,14 +144,6 @@ pub unsafe fn __vfs_can_never (_f: *mut FileDescriptor, _s: usize) -> isize { 0 
 pub unsafe fn __vfs_eof_always(_f: *mut FileDescriptor) -> isize { 1 }
 pub unsafe fn __vfs_eof_never (_f: *mut FileDescriptor) -> isize { 0 }
 
-// FIXME
-#[macro_export]
-macro_rules! ISDEV {
-    ($vnode:expr) => {
-        S_ISCHR!((*$vnode).mode) || S_ISBLK!((*$vnode).mode)
-    }
-}
-
 /* XXX */
 pub struct Mountpoint {
     pub dev: *mut u8,

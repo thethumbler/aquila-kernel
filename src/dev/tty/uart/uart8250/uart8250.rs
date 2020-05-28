@@ -17,7 +17,7 @@ const UART_DLL: usize = 0;
 const UART_DLH: usize = 1;
 const UART_LCR_DLAB: u8 = 0x80;
 
-static mut io8250: IOAddr = IOAddr {
+static mut IO8250: IOAddr = IOAddr {
     addr:  0x3F8,
     _type: IOADDR_PORT,
 };
@@ -26,34 +26,34 @@ const UART_8250_IRQ: usize = 4;
 
 
 unsafe fn serial_empty() -> bool {
-    return io8250.in8(5) & 0x20 != 0;
+    return IO8250.in8(5) & 0x20 != 0;
 }
 
 unsafe fn serial_received() -> bool {
-   return io8250.in8(5) & 0x01 != 0;
+   return IO8250.in8(5) & 0x01 != 0;
 }
 
 unsafe fn uart_8250_receive(_u: *mut Uart) -> u8 {
-    return io8250.in8(0);
+    return IO8250.in8(0);
 }
 
 unsafe fn uart_8250_transmit(_u: *mut Uart, c: u8) -> isize {
-    io8250.out8(0, c);
+    IO8250.out8(0, c);
     return 1;
 }
 
 unsafe fn uart_8250_irq(_: *const X86Regs) {
     if (serial_received()) {
-        if !uart_8250.vnode.is_null() {
+        if !UART_8250.vnode.is_null() {
             /* if open */
-            uart_recieve_handler(&mut uart_8250, 1);
+            uart_recieve_handler(&mut UART_8250, 1);
         }
     }
 
     if (serial_empty()) {
-        if !uart_8250.vnode.is_null() {
+        if !UART_8250.vnode.is_null() {
             /* if open */
-            uart_transmit_handler(&mut uart_8250, 1);
+            uart_transmit_handler(&mut UART_8250, 1);
         }
     }
 }
@@ -63,36 +63,36 @@ unsafe fn uart_8250_comm_init(_u: *mut Uart) {
     while (!serial_empty()) {}
 
     /* disable all interrupts */
-    io8250.out8(UART_IER, 0x00);
+    IO8250.out8(UART_IER, 0x00);
 
     /* 8 bits, no parity, one stop bit */
-    io8250.out8(UART_LCR, 0x03);
+    IO8250.out8(UART_LCR, 0x03);
     /* enalbe fifo, clear, 14 byte threshold */
-    io8250.out8(UART_FCR, 0xC7);
+    IO8250.out8(UART_FCR, 0xC7);
     /* DTR + RTS */
-    io8250.out8(UART_MCR, 0x0B);
+    IO8250.out8(UART_MCR, 0x0B);
 
     /* enable DLAB and set divisor */
-    let lcr = io8250.in8(UART_LCR);
+    let lcr = IO8250.in8(UART_LCR);
     /* enable DLAB */
-    io8250.out8(UART_LCR, lcr | UART_LCR_DLAB);
+    IO8250.out8(UART_LCR, lcr | UART_LCR_DLAB);
     /* set divisor to 3 */
-    io8250.out8(UART_DLL, 0x03);
-    io8250.out8(UART_DLH, 0x00);
-    io8250.out8(UART_LCR, lcr & !UART_LCR_DLAB);
+    IO8250.out8(UART_DLL, 0x03);
+    IO8250.out8(UART_DLH, 0x00);
+    IO8250.out8(UART_LCR, lcr & !UART_LCR_DLAB);
 
     /* enable data/empty interrupt */
-    io8250.out8(UART_IER, 0x01);
+    IO8250.out8(UART_IER, 0x01);
 }
 
 unsafe fn uart_8250_init() -> isize {
     //serial_init();
     x86_irq_handler_install(UART_8250_IRQ, uart_8250_irq);
-    uart_register(0, &mut uart_8250);
+    uart_register(0, &mut UART_8250);
     return 0;
 }
 
-static mut uart_8250: Uart = Uart {
+static mut UART_8250: Uart = Uart {
     name:     b"8250\0".as_ptr(),
     init:     Some(uart_8250_comm_init),
     transmit: Some(uart_8250_transmit),

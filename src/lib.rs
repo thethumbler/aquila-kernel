@@ -15,6 +15,7 @@
 
 #![feature(const_mut_refs)]
 
+//#![allow(unused)]
 #![allow(warnings)]
 
 extern crate alloc;

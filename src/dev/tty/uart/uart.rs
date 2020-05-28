@@ -29,7 +29,7 @@ pub struct Uart {
 const UART_BUF: usize = 64;
 
 /* registered devices */
-static mut devices: [*mut Uart; 192] = [core::ptr::null_mut(); 192];
+static mut DEVICES: [*mut Uart; 192] = [core::ptr::null_mut(); 192];
 
 /* called when data is received */
 pub unsafe fn uart_recieve_handler(u: *mut Uart, size: usize) {
@@ -73,7 +73,7 @@ pub unsafe fn uart_slave_write(tty: *mut Tty, size: usize, buf: *const u8) -> is
 }
 
 pub unsafe fn uart_read(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, buf: *mut u8) -> isize {
-    let u = devices[(*dd).minor as usize - 64];
+    let u = DEVICES[(*dd).minor as usize - 64];
 
     if u.is_null() {
         return -EIO;
@@ -83,7 +83,7 @@ pub unsafe fn uart_read(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, 
 }
 
 pub unsafe fn uart_write(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, buf: *mut u8) -> isize {
-    let u = devices[(*dd).minor as usize - 64];
+    let u = DEVICES[(*dd).minor as usize - 64];
     if u.is_null() {
         return -EIO;
     }
@@ -92,7 +92,7 @@ pub unsafe fn uart_write(dd: *mut DeviceDescriptor, _offset: off_t, size: usize,
 }
 
 pub unsafe fn uart_ioctl(dd: *mut DeviceDescriptor, request: usize, argp: *mut u8) -> isize {
-    let u = devices[(*dd).minor as usize - 64];
+    let u = DEVICES[(*dd).minor as usize - 64];
 
     if u.is_null() {
         return -EIO;
@@ -103,7 +103,7 @@ pub unsafe fn uart_ioctl(dd: *mut DeviceDescriptor, request: usize, argp: *mut u
 
 pub unsafe fn uart_file_open(file: *mut FileDescriptor) -> isize {
     let id = (*(*file).backend.vnode).rdev & 0xFF - 64;
-    let u = devices[id as usize];
+    let u = DEVICES[id as usize];
     let mut err = 0;
 
     if !(*u).vnode.is_null() {
@@ -130,8 +130,8 @@ pub unsafe fn uart_register(id: isize, u: *mut Uart) -> isize {
     if id < 0 {
         /* allocated dynamically */
         for i in 0..192 {
-            if devices[i].is_null() {
-                devices[i] = u;
+            if DEVICES[i].is_null() {
+                DEVICES[i] = u;
                 id = i as isize;
                 break;
             }
@@ -143,7 +143,7 @@ pub unsafe fn uart_register(id: isize, u: *mut Uart) -> isize {
         }
     }
 
-    devices[id as usize] = u;
+    DEVICES[id as usize] = u;
 
     print!("uart: registered uart {}: {}\n", id, cstr((*u).name));
     return id;

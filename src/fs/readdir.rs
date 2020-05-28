@@ -2,10 +2,6 @@ use prelude::*;
 use fs::*;
 use bits::dirent::*;
 
-use crate::kern::print::cstr;
-
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-
 /** read entries from a directory vnode
  * \ingroup vfs
  */

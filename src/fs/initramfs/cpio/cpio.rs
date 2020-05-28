@@ -1,15 +1,12 @@
 use prelude::*;
+
+use bits::dirent::*;
 use fs::*;
-use fs::rofs::*;
-use fs::posix::*;
 use fs::initramfs::*;
-use mm::*;
-use bits::dirent::DirectoryEntry;
-
-use kern::string::*;
+use fs::posix::*;
+use fs::rofs::*;
 use kern::time::*;
-
-use crate::{print, malloc_declare, malloc_define};
+use mm::*;
 
 malloc_declare!(M_VNODE);
 
@@ -79,7 +76,7 @@ unsafe fn cpio_root_node(super_node: *mut Vnode, vnode_ref: *mut *mut Vnode) -> 
     (*vnode).atime = ts;
     (*vnode).mtime = ts;
 
-    (*vnode).fs    = &cpiofs;
+    (*vnode).fs    = &CPIOFS;
     (*vnode).p     = p as *mut u8;
 
     (*p).super_node = super_node;
@@ -121,7 +118,7 @@ unsafe fn cpio_new_node(name: *const u8, hdr: *mut CpioHeader, sz: usize, data: 
     (*vnode).mtime = TimeSpec { tv_sec: (*hdr).mtime[0] as u64 * 0x10000 + (*hdr).mtime[1] as u64, tv_nsec: 0 };
     (*vnode).rdev  = (*hdr).rdev;
 
-    (*vnode).fs   = &cpiofs;
+    (*vnode).fs   = &CPIOFS;
     (*vnode).p    = p as *mut u8;
 
     (*p).super_node  = sp;
@@ -395,10 +392,10 @@ unsafe fn cpio_eof(file: *mut FileDescriptor) -> isize {
 }
 
 unsafe fn cpio_init() -> isize {
-    return initramfs_archiver_register(&mut cpiofs);
+    return initramfs_archiver_register(&mut CPIOFS);
 }
 
-static mut cpiofs: Filesystem = Filesystem {
+static mut CPIOFS: Filesystem = Filesystem {
     name: "cpio",
     nodev: 0,
     _load: Some(cpio_load),

@@ -1,6 +1,5 @@
 use prelude::*;
 use fs::*;
-use crate::{ISDEV};
 
 pub unsafe fn vfs_chown(vnode: *mut Vnode, uid: uid_t, gid: gid_t) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_chown(vnode=%p, uid=%d, gid=%d)\n", vnode, uid, gid);
@@ -11,7 +10,7 @@ pub unsafe fn vfs_chown(vnode: *mut Vnode, uid: uid_t, gid: gid_t) -> isize {
     }
 
     /* device node */
-    if ISDEV!(vnode) {
+    if (*vnode).is_device() {
         return -EINVAL;
     }
 

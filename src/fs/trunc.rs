@@ -1,7 +1,6 @@
 use prelude::*;
 use fs::*;
-
-use crate::{ISDEV};
+use dev::*;
 
 pub unsafe fn vfs_trunc(vnode: *mut Vnode, len: off_t) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_trunc(vnode=%p, len=%d)\n", vnode, len);
@@ -12,7 +11,7 @@ pub unsafe fn vfs_trunc(vnode: *mut Vnode, len: off_t) -> isize {
     }
 
     /* device node */
-    if ISDEV!(vnode) {
+    if (*vnode).is_device() {
         return -EINVAL;
     }
 

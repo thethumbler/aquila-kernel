@@ -4,8 +4,6 @@ use fs::*;
 use dev::kdev::*;
 use dev::*;
 
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
-
 /* read data from a vnode */
 pub unsafe fn vfs_read(vnode: *mut Vnode, off: off_t, size: usize, buf: *mut u8) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_read(vnode=%p, off=%d, size=%d, buf=%p)\n", vnode, off, size, buf);
@@ -16,8 +14,8 @@ pub unsafe fn vfs_read(vnode: *mut Vnode, off: off_t, size: usize, buf: *mut u8)
     }
 
     /* device node */
-    if ISDEV!(vnode) {
-        return kdev_read(&mut VNODE_DEV!(vnode), off, size, buf);
+    if (*vnode).is_device() {
+        return kdev_read(&mut vnode_dev!(vnode), off, size, buf);
     }
 
     /* invalid request */

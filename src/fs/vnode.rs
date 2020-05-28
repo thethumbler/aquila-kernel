@@ -232,5 +232,9 @@ impl Vnode {
             }
         }
     }
+
+    pub fn is_device(&self) -> bool {
+        S_ISCHR!(self.mode) || S_ISBLK!(self.mode)
+    }
 }
 

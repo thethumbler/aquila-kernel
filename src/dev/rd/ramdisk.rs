@@ -38,7 +38,7 @@ unsafe fn rd_probe() -> isize {
     rd_addr = (*rd_module).addr;
     rd_size = (*rd_module).size;
 
-    kdev_blkdev_register(1, &mut rddev);
+    kdev_blkdev_register(1, &mut RDDEV);
 
     return 0;
 }
@@ -47,7 +47,7 @@ unsafe fn rd_getbs(_dd: *mut DeviceDescriptor) -> usize {
     return 1;   /* FIXME */
 }
 
-static mut rddev: Device = Device {
+static mut RDDEV: Device = Device {
     name:  "ramdisk",
     probe: Some(rd_probe),
     read:  Some(rd_read),

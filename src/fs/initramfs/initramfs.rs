@@ -1,19 +1,19 @@
 use prelude::*;
-use fs::*;
-use fs::devfs::devfs::devfs;
-use mm::*;
 
-use kern::string::*;
+use dev::*;
 use dev::rd::ramdisk::rd_size;
-use crate::{malloc_declare, print, DEV};
+use fs::*;
+use fs::devfs::*;
+use kern::string::*;
+use mm::*;
 
 malloc_declare!(M_VNODE);
 
-static mut rd_dev: *mut Vnode = core::ptr::null_mut();
-static mut archivers: Queue<*mut Filesystem> = Queue::empty();
+static mut RD_DEV: *mut Vnode = core::ptr::null_mut();
+static mut ARCHIVERS: Queue<*mut Filesystem> = Queue::empty();
 
 pub unsafe fn initramfs_archiver_register(fs: *mut Filesystem) -> isize {
-    if archivers.enqueue(fs).is_null() {
+    if ARCHIVERS.enqueue(fs).is_null() {
         return -ENOMEM;
     }
 
@@ -25,23 +25,23 @@ pub unsafe fn initramfs_archiver_register(fs: *mut Filesystem) -> isize {
 pub unsafe fn load_ramdisk(_: *mut u8) -> isize {
     print!("kernel: loading ramdisk\n");
 
-    rd_dev = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
+    RD_DEV = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
 
-    if rd_dev.is_null() {
+    if RD_DEV.is_null() {
         return -ENOMEM;
     }
 
-    (*rd_dev).mode = S_IFBLK;
-    (*rd_dev).rdev = DEV!(1, 0);
-    (*rd_dev).size = rd_size;
-    (*rd_dev).fs   = &devfs;
+    (*RD_DEV).mode = S_IFBLK;
+    (*RD_DEV).rdev = devid!(1, 0);
+    (*RD_DEV).size = rd_size;
+    (*RD_DEV).fs   = &devfs;
 
     let mut root: *mut Vnode = core::ptr::null_mut();
     let mut err = -1;
 
-    for node in archivers.iter() {
+    for node in ARCHIVERS.iter() {
         let fs = (*node).value;
-        err = (*fs).load(rd_dev, &mut root);
+        err = (*fs).load(RD_DEV, &mut root);
 
         if err == 0 {
             break;

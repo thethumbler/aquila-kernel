@@ -1,9 +1,8 @@
 use prelude::*;
-use fs::*;
-use dev::dev::*;
-use dev::kdev::*;
 
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
+use fs::*;
+use dev::*;
+use dev::kdev::*;
 
 pub unsafe fn vfs_ioctl(vnode: *mut Vnode, request: usize, argp: *mut u8) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_ioctl(vnode=%p, request=%ld, argp=%p)\n", vnode, request, argp);
@@ -16,8 +15,8 @@ pub unsafe fn vfs_ioctl(vnode: *mut Vnode, request: usize, argp: *mut u8) -> isi
     }
 
     /* device node */
-    if ISDEV!(vnode) {
-        return kdev_ioctl(&mut VNODE_DEV!(vnode), request as isize, argp);
+    if (*vnode).is_device() {
+        return kdev_ioctl(&mut vnode_dev!(vnode), request as isize, argp);
     }
 
     /* invalid request */

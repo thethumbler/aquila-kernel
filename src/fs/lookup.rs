@@ -1,11 +1,9 @@
 use prelude::*;
+
 use fs::*;
 use mm::*;
 use bits::dirent::*;
 use bits::fcntl::*;
-use crate::kern::print::cstr;
-
-use crate::{ISDEV, VNODE_DEV, DEV_MAJOR, DEV_MINOR};
 
 unsafe fn vfs_follow(vnode: *mut Vnode, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize {
     /* TODO enforce limit */

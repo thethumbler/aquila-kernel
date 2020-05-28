@@ -45,34 +45,30 @@ impl Device {
 }
 
 /* useful macros */
-#[macro_export]
-macro_rules! DEV {
+pub macro devid {
     ($major:expr, $minor:expr) => {
         ((($major as u16 & 0xFF) << 8) | ($minor as u16 & 0xFF)) as u16
     }
 }
 
-#[macro_export]
-macro_rules! DEV_MAJOR {
+pub macro devid_major {
     ($dev:expr) => {
         (($dev >> 8) & 0xFF) as devid_t
     }
 }
 
-#[macro_export]
-macro_rules! DEV_MINOR {
+pub macro devid_minor {
     ($dev:expr) => {
         (($dev >> 0) & 0xFF) as devid_t
     }
 }
 
-#[macro_export]
-macro_rules! VNODE_DEV {
+pub macro vnode_dev {
     ($vnode:expr) => {
         DeviceDescriptor {
             devtype: (*$vnode).mode & S_IFMT,
-            major: DEV_MAJOR!((*$vnode).rdev),
-            minor: DEV_MINOR!((*$vnode).rdev),
+            major: devid_major!((*$vnode).rdev),
+            minor: devid_minor!((*$vnode).rdev),
         }
     }
 }

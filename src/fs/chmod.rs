@@ -1,8 +1,6 @@
 use prelude::*;
 use fs::*;
 
-use crate::{ISDEV};
-
 pub unsafe fn vfs_chmod(vnode: *mut Vnode, mode: mode_t) -> isize {
     //vfs_log(LOG_DEBUG, "vfs_chmod(vnode=%p, mode=%x)\n", vnode, mode);
 
@@ -12,7 +10,7 @@ pub unsafe fn vfs_chmod(vnode: *mut Vnode, mode: mode_t) -> isize {
     }
 
     /* device node */
-    if ISDEV!(vnode) {
+    if (*vnode).is_device() {
         return -EINVAL;
     }
 
