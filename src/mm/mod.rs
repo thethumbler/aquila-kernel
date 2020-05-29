@@ -7,6 +7,7 @@ pub mod vm_object;
 pub mod vmm;
 pub mod fault;
 pub mod kvmem;
+pub mod anon_ref;
 
 pub use self::buddy::*;
 pub use self::mm::*;
@@ -17,3 +18,4 @@ pub use self::vm_object::*;
 pub use self::vmm::*;
 pub use self::fault::*;
 pub use self::kvmem::*;
+pub use self::anon_ref::*;

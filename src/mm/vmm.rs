@@ -1,9 +1,5 @@
 use prelude::*;
-
 use mm::*;
-use crate::malloc_define;
-
-malloc_define!(M_VM_AREF, "vm-aref\0", "anonymous virtual memory object reference\0");
 
 #[no_mangle]
 pub static mut kvm_space: AddressSpace = AddressSpace {

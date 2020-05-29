@@ -8,8 +8,8 @@ malloc_define!(M_VM_ANON, "vm-anon\0", "anonymous virtual memory object\0");
  */
 #[repr(C)]
 pub struct VmAnon {
-    /** hashmap of `VmAref` structures loaded/contained in this anon */
-    pub arefs: *mut HashMap<off_t, *mut VmAref>,
+    /** hashmap of `AnonRef` structures loaded/contained in this anon */
+    pub arefs: *mut HashMap<off_t, *mut AnonRef>,
 
     /** number of [VmEntry] structures referencing this anon */
     pub refcnt: usize,
@@ -71,7 +71,7 @@ impl VmAnon {
                 let aref = node.value;
 
                 d_arefs.insert(&node.key, aref);
-                (*aref).refcnt += 1;
+                (*aref).incref();
             }
 
             return 0;
@@ -119,16 +119,6 @@ pub unsafe fn vm_anon_new() -> *mut VmAnon {
     return vm_anon;
 }
 
-/** destroy all resources associated with an aref */
-pub unsafe fn vm_aref_destroy(_vm_aref: *mut VmAref) -> () {
-    /* nothing to do */
-}
-
-/** decrement references to an aref */
-pub unsafe fn vm_aref_decref(vm_aref: *mut VmAref) -> () {
-    (*vm_aref).refcnt -= 1;
-}
-
 /** destroy all resources associated with an anon */
 pub unsafe fn vm_anon_destroy(vm_anon: *mut VmAnon) -> () {
     if vm_anon.is_null() {
@@ -142,16 +132,16 @@ pub unsafe fn vm_anon_destroy(vm_anon: *mut VmAnon) -> () {
     }
 
     for node in (*arefs).iter() {
-        let aref = node.value;
+        let aref = &mut *node.value;
 
-        vm_aref_decref(aref);
+        aref.decref();
 
-        if (*aref).refcnt == 0 {
-            if !(*aref).vm_page.is_null() {
-                mm_page_dealloc((*(*aref).vm_page).paddr);
+        if aref.refcnt() == 0 {
+            if !aref.vm_page.is_null() {
+                mm_page_dealloc((*aref.vm_page).paddr);
             }
 
-            kfree(aref as *mut u8);
+            Box::from_raw(aref);
         }
     }
 
@@ -197,10 +187,10 @@ pub unsafe fn vm_anon_copy_arefs(src: *mut VmAnon, dst: *mut VmAnon) -> isize {
 
     /* copy all arefs */
     for node in s_arefs.iter() {
-        let aref = node.value;
+        let aref = &mut *node.value;
 
         d_arefs.insert(&node.key, aref);
-        (*aref).refcnt += 1;
+        aref.incref();
     }
 
     return 0;
@@ -228,22 +218,4 @@ pub unsafe fn vm_anon_copy(vm_anon: *mut VmAnon) -> *mut VmAnon {
     }
 
     return new_anon;
-}
-
-/**
- * anonymous memory object reference
- *
- * The [VmAref] acts as a container of a [VmPage] with reference count
- * of anonymous memory regions ([VmAnon]) referencing/using that page.
- */
-#[repr(C)]
-pub struct VmAref {
-    /** vm page associated with the aref */
-    pub vm_page: *mut VmPage,
-
-    /** number of references to the aref */
-    pub refcnt: usize,
-
-    /** flags associated with this aref */
-    pub flags: usize,
 }

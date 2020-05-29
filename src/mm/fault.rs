@@ -5,8 +5,6 @@ use mm::*;
 use sys::sched::*;
 use sys::signal::*;
 
-malloc_declare!(M_VM_AREF);
-
 /** a structure holding parameters relevant to a page fault */
 struct FaultInfo {
     flags: usize,
@@ -50,7 +48,7 @@ unsafe fn pf_present(info: *mut FaultInfo) -> isize {
     let hash_node = (*(*vm_anon).arefs).lookup(&(*info).off);
     let vm_aref = if hash_node.is_some() { hash_node.unwrap().value } else { core::ptr::null_mut() };
 
-    if vm_aref.is_null() || (*vm_aref).refcnt != 1 {
+    if vm_aref.is_null() || (*vm_aref).refcnt() != 1 {
         return 0;
     }
 
@@ -103,7 +101,7 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     let aref_node = aref_node.unwrap();
 
-    let aref = (*aref_node).value as *mut VmAref;
+    let aref = (*aref_node).value;
 
     if (*aref).vm_page.is_null() {
         panic!("aref has no page");
@@ -123,7 +121,7 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     /* we have PF_WRITE */
 
-    if (*aref).refcnt == 1 {
+    if (*aref).refcnt() == 1 {
         /* we own the aref, just map */
 
         let vm_page = (*aref).vm_page;
@@ -137,8 +135,7 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
     }
 
     /* copy, map read-write */
-
-    (*aref).refcnt -= 1;
+    (*aref).decref();
 
     let vm_page = (*aref).vm_page;
 
@@ -149,15 +146,11 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     pmap_page_copy((*vm_page).paddr, (*new_page).paddr);
 
-    let new_aref = kmalloc(core::mem::size_of::<VmAref>(), &M_VM_AREF, M_ZERO) as *mut VmAref;
+    let mut new_aref = Box::leak(AnonRef::alloc());
 
-    if new_aref.is_null() {
-        /* TODO */
-    }
-
-    (*new_aref).refcnt = 1;
-    (*new_aref).flags = (*aref).flags;
-    (*new_aref).vm_page = new_page;
+    new_aref.incref();
+    new_aref.flags = (*aref).flags;
+    new_aref.vm_page = new_page;
 
     (*(*(*vm_entry).vm_anon).arefs).node_remove(aref_node);
     (*(*(*vm_entry).vm_anon).arefs).insert(&(*info).off, new_aref);
@@ -214,14 +207,10 @@ unsafe fn pf_object(info: *mut FaultInfo) -> isize {
         (*(*vm_entry).vm_anon).refcnt = 1;
     }
 
-    let vm_aref = kmalloc(core::mem::size_of::<VmAref>(), &M_VM_AREF, M_ZERO) as *mut VmAref;
+    let mut vm_aref = Box::leak(AnonRef::alloc());
 
-    if vm_aref.is_null() {
-        /* TODO */
-    }
-
-    (*vm_aref).vm_page = vm_page;
-    (*vm_aref).refcnt = 1;
+    vm_aref.vm_page = vm_page;
+    vm_aref.incref();
 
     //if (!(pf->flags & PF_WRITE)) {
     //    /* just mark for copying */
@@ -267,15 +256,12 @@ unsafe fn pf_zero(info: *mut FaultInfo) -> isize {
     (*new_page).off = (*info).off;
     (*new_page).refcnt = 1;
 
-    let vm_aref = kmalloc(core::mem::size_of::<VmAref>(), &M_VM_AREF, M_ZERO) as *mut VmAref;
+    let vm_aref = Box::leak(AnonRef::alloc());
 
-    *vm_aref = VmAref {
-        vm_page: new_page,
-        refcnt: 1,
-        flags: 0,
-    };
+    vm_aref.vm_page = new_page;
+    vm_aref.incref();
 
-    (*(*(*vm_entry).vm_anon).arefs).insert(&(*info).off, &*vm_aref as *const _ as *mut VmAref);
+    (*(*(*vm_entry).vm_anon).arefs).insert(&(*info).off, vm_aref);
 
     mm_page_map(pmap, (*info).addr, (*new_page).paddr, VM_KW as isize); //vm_entry->flags & VM_PERM);
     //memset((void *) info->addr, 0, PAGE_SIZE);
