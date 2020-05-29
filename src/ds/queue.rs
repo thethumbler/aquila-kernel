@@ -17,6 +17,12 @@ pub struct QueueNode<T> {
     pub next: *mut QueueNode<T>,
 }
 
+impl<T> QueueNode<T> {
+    pub fn alloc() -> Box<QueueNode<T>> {
+        unsafe { Box::new_zeroed_tagged(&M_QNODE).assume_init() }
+    }
+}
+
 unsafe impl<T> Sync for QueueNode<T> {}
 
 #[derive(Copy, Clone, Debug)]
@@ -82,39 +88,35 @@ impl<T: Copy> Queue<T> {
         self.count
     }
 
-    pub unsafe fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {
-        let mut node = kmalloc(core::mem::size_of::<QueueNode<T>>(), &M_QNODE, M_ZERO) as *mut QueueNode<T>;
-        if node.is_null() {
-            return core::ptr::null_mut();
+    pub fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {
+        unsafe {
+            let mut node = Box::leak(QueueNode::alloc());
+
+            node.value = value;
+
+            if self.count == 0 {
+                /* queue is not initalized */
+                self.head = node;
+                self.tail = node;
+            } else {
+                node.prev = self.tail;
+                (*self.tail).next = node;
+                self.tail = node;
+            }
+
+            self.count += 1;
+
+            return node;
         }
-
-        (*node).value = value;
-
-        if self.count == 0 {
-            /* queue is not initalized */
-            self.head = node;
-            self.tail = node;
-        } else {
-            (*node).prev = self.tail;
-            (*self.tail).next = node;
-            self.tail = node;
-        }
-
-        self.count += 1;
-
-        return node;
     }
 
     pub fn enqueue_before(&mut self, qnode: *mut QueueNode<T>, value: T) -> *mut QueueNode<T> {
         unsafe {
-            let mut node = kmalloc(core::mem::size_of::<QueueNode<T>>(), &M_QNODE, M_ZERO) as *mut QueueNode<T>;
-            if node.is_null() {
-                return core::ptr::null_mut();
-            }
+            let mut node = Box::leak(QueueNode::alloc());
 
-            (*node).prev  = (*qnode).prev;
-            (*node).next  = qnode;
-            (*node).value = value;
+            node.prev  = (*qnode).prev;
+            node.next  = qnode;
+            node.value = value;
 
             if !(*qnode).prev.is_null() {
                 (*(*qnode).prev).next = node;
@@ -132,58 +134,62 @@ impl<T: Copy> Queue<T> {
         }
     }
 
-    pub unsafe fn dequeue(&mut self) -> Option<T> {
-        if self.count == 0 {
-            return None
+    pub fn dequeue(&mut self) -> Option<T> {
+        unsafe {
+            if self.count == 0 {
+                return None
+            }
+
+            self.count -= 1;
+
+            let head = self.head;
+
+            self.head = (*head).next;
+
+            if !self.head.is_null() {
+                (*self.head).prev = core::ptr::null_mut();
+            }
+
+            if head == self.tail {
+                self.tail = core::ptr::null_mut();
+            }
+
+            let value = (*head).value;
+
+            Box::from_raw(head);
+
+            return Some(value);
         }
-
-        self.count -= 1;
-
-        let head = self.head;
-
-        self.head = (*head).next;
-
-        if !self.head.is_null() {
-            (*self.head).prev = core::ptr::null_mut();
-        }
-
-        if head == self.tail {
-            self.tail = core::ptr::null_mut();
-        }
-
-        let value = (*head).value;
-
-        kfree(head as *mut u8);
-
-        return Some(value);
     }
 
-    pub unsafe fn node_remove(&mut self, qnode: *mut QueueNode<T>) {
-        if self.count == 0 || qnode.is_null() {
+    pub fn node_remove(&mut self, qnode: *mut QueueNode<T>) {
+        unsafe {
+            if self.count == 0 || qnode.is_null() {
+                return;
+            }
+
+            if !(*qnode).prev.is_null() {
+                (*(*qnode).prev).next = (*qnode).next;
+            }
+
+            if !(*qnode).next.is_null() {
+                (*(*qnode).next).prev = (*qnode).prev;
+            }
+
+            if self.head == qnode {
+                self.head = (*qnode).next;
+            }
+
+            if self.tail == qnode {
+                self.tail = (*qnode).prev;
+            }
+
+            self.count -= 1;
+
+            Box::from_raw(qnode);
+
             return;
         }
-
-        if !(*qnode).prev.is_null() {
-            (*(*qnode).prev).next = (*qnode).next;
-        }
-
-        if !(*qnode).next.is_null() {
-            (*(*qnode).next).prev = (*qnode).prev;
-        }
-
-        if self.head == qnode {
-            self.head = (*qnode).next;
-        }
-
-        if self.tail == qnode {
-            self.tail = (*qnode).prev;
-        }
-
-        self.count -= 1;
-
-        kfree(qnode as *mut u8);
-
-        return;
     }
 
     pub fn iter<'a>(&'a self) -> QueueIterator<'a, T> {
@@ -197,35 +203,37 @@ impl<T: Copy> Queue<T> {
 }
 
 impl<T: Copy + PartialEq> Queue<T> {
-    pub unsafe fn remove(&mut self, value: T) {
-        if self.count == 0 {
-            return;
-        }
-
-        let mut qnode = self.head;
-
-        while !qnode.is_null() {
-            if (*qnode).value == value {
-                if (*qnode).prev.is_null() {
-                    /* head */
-                    self.dequeue();
-                } else if (*qnode).next.is_null() {
-                    /* tail */
-                    self.count -= 1;
-                    self.tail = (*self.tail).prev;
-                    (*self.tail).next = core::ptr::null_mut();
-                    kfree(qnode as *mut u8);
-                } else {
-                    self.count -= 1;
-                    (*(*qnode).prev).next = (*qnode).next;
-                    (*(*qnode).next).prev = (*qnode).prev;
-                    kfree(qnode as *mut u8);
-                }
-
-                break;
+    pub fn remove(&mut self, value: T) {
+        unsafe {
+            if self.count == 0 {
+                return;
             }
 
-            qnode = (*qnode).next;
+            let mut qnode = self.head;
+
+            while !qnode.is_null() {
+                if (*qnode).value == value {
+                    if (*qnode).prev.is_null() {
+                        /* head */
+                        self.dequeue();
+                    } else if (*qnode).next.is_null() {
+                        /* tail */
+                        self.count -= 1;
+                        self.tail = (*self.tail).prev;
+                        (*self.tail).next = core::ptr::null_mut();
+                        Box::from_raw(qnode);
+                    } else {
+                        self.count -= 1;
+                        (*(*qnode).prev).next = (*qnode).next;
+                        (*(*qnode).next).prev = (*qnode).prev;
+                        Box::from_raw(qnode);
+                    }
+
+                    break;
+                }
+
+                qnode = (*qnode).next;
+            }
         }
     }
 }

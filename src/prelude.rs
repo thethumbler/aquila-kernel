@@ -27,7 +27,14 @@ pub trait TaggedAllocator<T> {
     }
 
     fn new_zeroed_tagged(tag: &MallocType) -> Box<core::mem::MaybeUninit<T>> {
-        Box::new_zeroed()
+        unsafe {
+            let ptr = kmalloc(core::mem::size_of::<T>(), tag, M_ZERO) as *mut core::mem::MaybeUninit<T>;
+            if ptr.is_null() {
+                panic!("allocation failed");
+            }
+
+            Box::from_raw(ptr)
+        }
     }
 }
 

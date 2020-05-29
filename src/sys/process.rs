@@ -101,14 +101,17 @@ pub macro proc_uio {
 }
 
 impl Process {
+    pub fn alloc() -> Box<Process> {
+        unsafe { Box::new_zeroed_tagged(&M_PROC).assume_init() }
+    }
+
     pub fn new_thread(&mut self, thread_ref: *mut *mut Thread) -> isize {
-        // XXX
-        let mut thread = unsafe { Box::leak(Box::<Thread>::new_zeroed_tagged(&M_THREAD).assume_init()) };
+        let mut thread = Box::leak(Thread::alloc());
 
         thread.owner = self;
         thread.tid = (self.threads.count() + 1) as tid_t;
 
-        unsafe { self.threads.enqueue(thread); }
+        self.threads.enqueue(thread);
 
         if !thread_ref.is_null() {
             unsafe { *thread_ref = thread; }
@@ -148,20 +151,15 @@ pub unsafe fn proc_pid_free(pid: isize) {
 pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
     let mut err = 0;
 
-    let mut proc: *mut Process = core::ptr::null_mut();
     let mut thread = core::ptr::null_mut();
     let mut pmap = core::ptr::null_mut();
 
-    let proc = kmalloc(core::mem::size_of::<Process>(), &M_PROC, M_ZERO) as *mut Process;
+    let mut proc = Box::leak(Process::alloc());
 
-    if proc.is_null() {
-        return -ENOMEM;
-    }
-
-    err = (*proc).new_thread(&mut thread);
+    err = proc.new_thread(&mut thread);
 
     if err != 0 {
-        kfree(proc as *mut u8);
+        Box::from_raw(proc);
         return err;
     }
 
@@ -171,12 +169,12 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
         err = -ENOMEM;
 
         kfree(thread as *mut u8);
-        kfree(proc as *mut u8);
+        Box::from_raw(proc);
 
         return err;
     }
 
-    (*proc).vm_space.pmap = pmap;
+    proc.vm_space.pmap = pmap;
 
     /* Set all signal handlers to default */
     for i in 0..SIG_MAX {
@@ -184,7 +182,7 @@ pub unsafe fn proc_new(proc_ref: *mut *mut Process) -> isize {
         //(*proc).sigaction[i].sa_handler = SIG_DFL;
     }
 
-    (*proc).running = 1;
+    proc.running = 1;
 
     /* add process to all processes queue */
     PROCS.enqueue(proc);
@@ -346,7 +344,7 @@ pub unsafe extern "C" fn proc_reap(proc: *mut Process) -> isize {
     proc_pid_free((*proc).pid);
 
     PROCS.remove(proc);
-    kfree(proc as *mut u8);
+    Box::from_raw(proc);
 
     return 0;
 }

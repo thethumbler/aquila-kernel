@@ -30,29 +30,23 @@ pub struct ProcessGroup {
 
 unsafe impl Sync for ProcessGroup {}
 
+impl ProcessGroup {
+    pub fn alloc() -> Box<ProcessGroup> {
+        unsafe { Box::new_zeroed_tagged(&M_PGROUP).assume_init() }
+    }
+}
+
 pub unsafe fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut ProcessGroup) -> isize {
     let mut err = 0;
-    let mut pgrp: *mut ProcessGroup = core::ptr::null_mut();
-    
-    pgrp = kmalloc(core::mem::size_of::<ProcessGroup>(), &M_PGROUP, M_ZERO) as *mut ProcessGroup;
-    if pgrp.is_null() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
+    let mut pgrp = Box::leak(ProcessGroup::alloc());
 
-    (*pgrp).pgid = (*proc).pid;
-    (*pgrp).session = (*(*proc).pgrp).session;
+    pgrp.pgid = (*proc).pid;
+    pgrp.session = (*(*proc).pgrp).session;
 
     /* remove the process from the old process group */
     (*(*proc).pgrp).procs.as_mut().unwrap().node_remove((*proc).pgrp_node);
 
-    (*pgrp).procs = Some(Queue::alloc());
-    if (*pgrp).procs.is_none() {
-        //goto e_nomem;
-        //FIXME
-        return -ENOMEM;
-    }
+    pgrp.procs = Some(Queue::alloc());
 
     (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
     if (*proc).pgrp_node.is_null() {
@@ -61,7 +55,7 @@ pub unsafe fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut ProcessGroup) -
         return -ENOMEM;
     }
 
-    (*pgrp).session_node = (*(*(*proc).pgrp).session).pgps.as_mut().unwrap().enqueue(pgrp);
+    pgrp.session_node = (*(*(*proc).pgrp).session).pgps.as_mut().unwrap().enqueue(pgrp);
     if (*pgrp).session_node.is_null() {
         //goto e_nomem;
         //FIXME

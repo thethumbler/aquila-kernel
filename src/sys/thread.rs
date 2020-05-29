@@ -54,6 +54,10 @@ pub struct Thread {
 unsafe impl Sync for Thread {}
 
 impl Thread {
+    pub fn alloc() -> Box<Thread> {
+        unsafe { Box::new_zeroed_tagged(&M_THREAD).assume_init() }
+    }
+
     pub fn kill(&mut self) -> isize {
         unsafe {
             /* free resources */
