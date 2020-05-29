@@ -6,6 +6,7 @@ fn main() {
 
     Command::new("ld.lld")
         .arg(&format!("-Tconfigs/i686/link.ld"))
+        .arg(&format!("-melf_i386"))
         .arg(&format!("{}/libkernel.a", out_dir))
         .arg(&format!("{}/libkernel.a", out_dir))
         .arg(&format!("--output={}/kernel.elf", out_dir))

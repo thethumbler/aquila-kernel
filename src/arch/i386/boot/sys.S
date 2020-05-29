@@ -1,4 +1,4 @@
-.section ".boot.text"
+.section ".boot.text", "ax"
 
 .global early_init_fix_stack
 early_init_fix_stack:

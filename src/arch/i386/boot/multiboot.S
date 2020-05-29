@@ -1,4 +1,4 @@
-.section ".boot.text", "x"
+.section ".boot.text", "ax"
 
 /*
  *  multiboot definitions
