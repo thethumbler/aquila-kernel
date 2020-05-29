@@ -19,7 +19,15 @@ pub use mm::kvmem::M_ZERO;
 
 pub trait TaggedAllocator<T> {
     fn new_tagged(tag: &MallocType, obj: T) -> Box<T> {
-        Box::new(obj)
+        unsafe {
+            let ptr = kmalloc(core::mem::size_of::<T>(), tag, 0) as *mut T;
+            if ptr.is_null() {
+                panic!("allocation failed");
+            }
+
+            core::ptr::write(ptr, obj);
+            Box::from_raw(ptr)
+        }
     }
 
     fn new_uninit_tagged(tag: &MallocType) -> Box<core::mem::MaybeUninit<T>> {
