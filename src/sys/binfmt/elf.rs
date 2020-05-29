@@ -246,39 +246,36 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
             /* page align size */
             memsz = page_round!(memsz) as u32;
 
-            let vm_entry = vm_entry_new();
-            if vm_entry.is_null() {
-                return -ENOMEM;
-            }
+            let vm_entry = Box::leak(VmEntry::alloc());
 
-            (*vm_entry).base = base as usize;
-            (*vm_entry).size = memsz as usize;
-            (*vm_entry).off  = off as usize;
+            vm_entry.base = base as usize;
+            vm_entry.size = memsz as usize;
+            vm_entry.off  = off as usize;
 
             /* access flags */
-            (*vm_entry).flags |= if phdr.p_flags as usize & PF_R != 0 { VM_UR } else { 0 };
-            (*vm_entry).flags |= if phdr.p_flags as usize & PF_W != 0 { VM_UW } else { 0 };
-            (*vm_entry).flags |= if phdr.p_flags as usize & PF_X != 0 { VM_UX } else { 0 };
+            vm_entry.flags |= if phdr.p_flags as usize & PF_R != 0 { VM_UR } else { 0 };
+            vm_entry.flags |= if phdr.p_flags as usize & PF_W != 0 { VM_UW } else { 0 };
+            vm_entry.flags |= if phdr.p_flags as usize & PF_X != 0 { VM_UX } else { 0 };
 
             /* TODO use W^X */
 
-            (*vm_entry).qnode = (*vm_space).vm_entries.enqueue(vm_entry);
+            vm_entry.qnode = (*vm_space).vm_entries.enqueue(vm_entry);
 
-            if (*vm_entry).qnode.is_null() {
+            if vm_entry.qnode.is_null() {
                 return -ENOMEM;
             }
 
-            (*vm_entry).vm_object = vm_object_vnode(vnode);
+            vm_entry.vm_object = vm_object_vnode(vnode);
 
-            if (*vm_entry).vm_object.is_null() {
+            if vm_entry.vm_object.is_null() {
                 return -ENOMEM;
             }
 
-            if (*vm_entry).flags & VM_UW != 0 {
-                (*vm_entry).flags |= VM_COPY;
+            if vm_entry.flags & VM_UW != 0 {
+                vm_entry.flags |= VM_COPY;
             }
 
-            vm_object_incref((*vm_entry).vm_object);
+            vm_object_incref(vm_entry.vm_object);
 
             if base + memsz > proc_heap {
                 proc_heap = base + memsz;
@@ -289,18 +286,18 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
                 let bss = base + filesz;
                 let bss_init_end = page_round!(base + filesz);
 
-                if (*vm_entry).base + (*vm_entry).size > bss_init_end {
-                    let sz = bss_init_end - (*vm_entry).base;
-                    let split = vm_entry_new();
+                if vm_entry.base + vm_entry.size > bss_init_end {
+                    let sz = bss_init_end - vm_entry.base;
+                    let split = Box::leak(VmEntry::alloc());
 
-                    (*split).base = bss_init_end;
-                    (*split).size = (*vm_entry).size - sz;
-                    (*split).flags = (*vm_entry).flags;
-                    (*split).off = 0;
+                    split.base = bss_init_end;
+                    split.size = vm_entry.size - sz;
+                    split.flags = vm_entry.flags;
+                    split.off = 0;
 
-                    (*split).qnode = (*vm_space).vm_entries.enqueue(split);
+                    split.qnode = (*vm_space).vm_entries.enqueue(split);
 
-                    (*vm_entry).size = sz;
+                    vm_entry.size = sz;
                 }
 
                 /* fault in the page */

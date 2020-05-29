@@ -3,7 +3,7 @@ use prelude::*;
 use mm::*;
 use crate::malloc_define;
 
-malloc_define!(M_VM_ENTRY, "vm_entry\0", "virtual memory map entry\0");
+malloc_define!(M_MAP_ENTRY, "map_entry\0", "virtual memory map entry\0");
 
 #[derive(Copy, Clone, Debug)]
 pub struct VmEntry {
@@ -45,30 +45,21 @@ impl VmEntry {
             qnode: core::ptr::null_mut(),
         }
     }
-}
-
-/** create new vm entry */
-pub unsafe fn vm_entry_new() -> *mut VmEntry {
-    let vm_entry = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry;
-
-    if vm_entry.is_null() {
-        return core::ptr::null_mut();
+    
+    pub fn alloc() -> Box<VmEntry> {
+        unsafe { Box::new_zeroed_tagged(&M_MAP_ENTRY).assume_init() }
     }
 
-    return vm_entry;
-}
+    /** destroy all resources associated with a vm entry */
+    pub fn destroy(&mut self) {
+        unsafe {
+            if !self.vm_anon.is_null() {
+                vm_anon_decref(self.vm_anon);
+            }
 
-/** destroy all resources associated with a vm entry */
-pub unsafe fn vm_entry_destroy(vm_entry: *mut VmEntry) {
-    if vm_entry.is_null() {
-        return;
-    }
-
-    if !(*vm_entry).vm_anon.is_null() {
-        vm_anon_decref((*vm_entry).vm_anon);
-    }
-
-    if !(*vm_entry).vm_object.is_null() {
-        vm_object_decref((*vm_entry).vm_object);
+            if !self.vm_object.is_null() {
+                vm_object_decref(self.vm_object);
+            }
+        }
     }
 }

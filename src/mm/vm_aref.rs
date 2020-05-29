@@ -3,7 +3,7 @@ use mm::*;
 
 malloc_define!(M_ANON_REF, "anon-ref\0", "anonymous virtual memory object reference\0");
 
-pub struct AnonRef {
+pub struct VmAref {
     /** vm page associated with the aref */
     pub vm_page: *mut VmPage,
 
@@ -14,8 +14,8 @@ pub struct AnonRef {
     pub flags: usize,
 }
 
-impl AnonRef {
-    pub fn alloc() -> Box<AnonRef> {
+impl VmAref {
+    pub fn alloc() -> Box<VmAref> {
         unsafe { Box::new_zeroed_tagged(&M_ANON_REF).assume_init() }
     }
 

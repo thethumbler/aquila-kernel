@@ -8,8 +8,8 @@ malloc_define!(M_VM_ANON, "vm-anon\0", "anonymous virtual memory object\0");
  */
 #[repr(C)]
 pub struct VmAnon {
-    /** hashmap of `AnonRef` structures loaded/contained in this anon */
-    pub arefs: *mut HashMap<off_t, *mut AnonRef>,
+    /** hashmap of `VmAref` structures loaded/contained in this anon */
+    pub arefs: *mut HashMap<off_t, *mut VmAref>,
 
     /** number of [VmEntry] structures referencing this anon */
     pub refcnt: usize,

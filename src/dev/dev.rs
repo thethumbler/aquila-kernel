@@ -17,7 +17,7 @@ pub struct Device {
     pub read:   Option<unsafe fn(dd: *mut DeviceDescriptor, offset: off_t, size: usize, buf: *mut u8) -> isize>,
     pub write:  Option<unsafe fn(dd: *mut DeviceDescriptor, offset: off_t, size: usize, buf: *mut u8) -> isize>,
     pub ioctl:  Option<unsafe fn(dd: *mut DeviceDescriptor, request: usize, argp: *mut u8) -> isize>,
-    pub map:    Option<unsafe fn(dd: *mut DeviceDescriptor, vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> isize>,
+    pub map:    Option<unsafe fn(dd: *mut DeviceDescriptor, vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize>,
 
     pub fops: FileOps,
 

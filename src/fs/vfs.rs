@@ -50,7 +50,7 @@ pub struct VnodeOps {
     pub _vsync:   Option<unsafe fn(vnode: *mut Vnode, mode: isize) -> isize>,
     pub _sync:    Option<unsafe fn(super_node: *mut Vnode, mode: isize) -> isize>,
 
-    pub _map:     Option<unsafe fn(vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> isize>,
+    pub _map:     Option<unsafe fn(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize>,
 }
 
 impl VnodeOps {

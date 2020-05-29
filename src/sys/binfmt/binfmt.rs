@@ -41,32 +41,26 @@ unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode
     (*proc).heap = (*proc).heap_start;
 
     /* Create heap vm_entry */
-    let heap_vm = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry;
-    if heap_vm.is_null() {
-        /* TODO */
-    }
+    let heap_vm = Box::leak(VmEntry::alloc());
 
-    (*heap_vm).base  = (*proc).heap_start;
-    (*heap_vm).size  = 0;
-    (*heap_vm).flags = VM_URW;
-    (*heap_vm).qnode = (*proc).vm_space.vm_entries.enqueue(heap_vm);
+    heap_vm.base  = (*proc).heap_start;
+    heap_vm.size  = 0;
+    heap_vm.flags = VM_URW;
+    heap_vm.qnode = (*proc).vm_space.vm_entries.enqueue(heap_vm);
 
-    (*heap_vm).vm_object = core::ptr::null_mut();
+    heap_vm.vm_object = core::ptr::null_mut();
     
     (*proc).heap_vm  = heap_vm;
 
     /* Create stack vm_entry */
-    let stack_vm = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry;
-    if stack_vm.is_null() {
-        /* TODO */
-    }
+    let stack_vm = Box::leak(VmEntry::alloc());
 
-    (*stack_vm).base  = USER_STACK_BASE;
-    (*stack_vm).size  = USER_STACK_SIZE;
-    (*stack_vm).flags = VM_URW;
-    (*stack_vm).qnode = (*proc).vm_space.vm_entries.enqueue(stack_vm);
+    stack_vm.base  = USER_STACK_BASE;
+    stack_vm.size  = USER_STACK_SIZE;
+    stack_vm.flags = VM_URW;
+    stack_vm.qnode = (*proc).vm_space.vm_entries.enqueue(stack_vm);
 
-    (*stack_vm).vm_object = core::ptr::null_mut();
+    stack_vm.vm_object = core::ptr::null_mut();
 
     (*proc).stack_vm  = stack_vm;
 

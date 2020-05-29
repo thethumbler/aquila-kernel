@@ -1,14 +1,10 @@
 use prelude::*;
 
 use mm::*;
-use arch::i386::mm::i386::*;
-
-use crate::{page_align, malloc_declare, print};
-
-malloc_declare!(M_VM_ENTRY);
+use arch::mm::i386::*;
 
 #[derive(Debug)]
-pub struct AddressSpace {
+pub struct VmSpace {
     /** physical memory mapper (arch-specific) */
     pub pmap: *mut PhysicalMap,
 
@@ -16,10 +12,10 @@ pub struct AddressSpace {
     pub vm_entries: Queue<*mut VmEntry>,
 }
 
-unsafe impl Sync for AddressSpace {}
+unsafe impl Sync for VmSpace {}
 
-impl AddressSpace {
-    /** look for the [VmEntry] containing ```vaddr``` inside the [AddressSpace] */
+impl VmSpace {
+    /** look for the [VmEntry] containing ```vaddr``` inside the [VmSpace] */
     pub fn find(&self, vaddr: usize) -> Option<&VmEntry> {
         let vaddr = page_align!(vaddr);
 
@@ -81,14 +77,14 @@ impl AddressSpace {
         return 0;
     }
 
-    pub fn fork(&mut self, dst: &mut AddressSpace) -> isize {
+    pub fn fork(&mut self, dst: &mut VmSpace) -> isize {
         /* copy vm entries */
         let src_vm_entries = &mut self.vm_entries;
 
         for qnode in src_vm_entries.iter() {
             unsafe {
                 let s_entry = &*(qnode.value as *mut VmEntry);
-                let mut d_entry = kmalloc(core::mem::size_of::<VmEntry>(), &M_VM_ENTRY, M_ZERO) as *mut VmEntry;
+                let mut d_entry = Box::leak(VmEntry::alloc());
 
                 *d_entry = *s_entry;
                 (*d_entry).qnode = (*dst).vm_entries.enqueue(&mut *d_entry);
@@ -120,7 +116,7 @@ impl AddressSpace {
     }
 }
 
-pub unsafe fn vm_space_find(vm_space: *mut AddressSpace, vaddr: usize) -> *mut VmEntry {
+pub unsafe fn vm_space_find(vm_space: *mut VmSpace, vaddr: usize) -> *mut VmEntry {
     if vm_space.is_null() {
         return core::ptr::null_mut();
     }
@@ -134,7 +130,7 @@ pub unsafe fn vm_space_find(vm_space: *mut AddressSpace, vaddr: usize) -> *mut V
     }
 }
 
-pub unsafe fn vm_space_destroy(vm_space: *mut AddressSpace) -> () {
+pub unsafe fn vm_space_destroy(vm_space: *mut VmSpace) -> () {
     if vm_space.is_null() {
         return;
     }
@@ -143,15 +139,15 @@ pub unsafe fn vm_space_destroy(vm_space: *mut AddressSpace) -> () {
     let mut vm_entry = (*vm_entries).dequeue();
 
     while !vm_entry.is_none() {
-        vm_entry_destroy(vm_entry.unwrap());
-        kfree(vm_entry.unwrap() as *mut u8);
+        (*vm_entry.unwrap()).destroy();
+        Box::from_raw(vm_entry.unwrap());
         vm_entry = (*vm_entries).dequeue();
     }
 
     pmap_remove_all((*vm_space).pmap);
 }
 
-pub unsafe fn vm_space_fork(src: *mut AddressSpace, dst: *mut AddressSpace) -> isize {
+pub unsafe fn vm_space_fork(src: *mut VmSpace, dst: *mut VmSpace) -> isize {
     if src.is_null() || dst.is_null() {
         //return -EINVAL;
         return -1;

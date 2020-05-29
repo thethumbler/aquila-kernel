@@ -220,7 +220,7 @@ impl Vnode {
         }
     }
 
-    pub fn map(&self, vm_space: *mut AddressSpace, vm_entry: *mut VmEntry) -> isize {
+    pub fn map(&self, vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize {
         if self.fs.is_null() {
             return -ENOSYS;
         }

@@ -10,7 +10,7 @@ struct FaultInfo {
     flags: usize,
     addr: usize,
 
-    vm_space: *mut AddressSpace,
+    vm_space: *mut VmSpace,
     vm_entry: *mut VmEntry,
 
     off: off_t,
@@ -146,7 +146,7 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     pmap_page_copy((*vm_page).paddr, (*new_page).paddr);
 
-    let mut new_aref = Box::leak(AnonRef::alloc());
+    let mut new_aref = Box::leak(VmAref::alloc());
 
     new_aref.incref();
     new_aref.flags = (*aref).flags;
@@ -207,7 +207,7 @@ unsafe fn pf_object(info: *mut FaultInfo) -> isize {
         (*(*vm_entry).vm_anon).refcnt = 1;
     }
 
-    let mut vm_aref = Box::leak(AnonRef::alloc());
+    let mut vm_aref = Box::leak(VmAref::alloc());
 
     vm_aref.vm_page = vm_page;
     vm_aref.incref();
@@ -256,7 +256,7 @@ unsafe fn pf_zero(info: *mut FaultInfo) -> isize {
     (*new_page).off = (*info).off;
     (*new_page).refcnt = 1;
 
-    let vm_aref = Box::leak(AnonRef::alloc());
+    let vm_aref = Box::leak(VmAref::alloc());
 
     vm_aref.vm_page = new_page;
     vm_aref.incref();

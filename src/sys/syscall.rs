@@ -838,24 +838,18 @@ unsafe fn sys_mmap(args: *mut MmapArgs, ret: *mut *mut u8) {
         return;
     }
 
-    let vm_entry = vm_entry_new();
-
-    if vm_entry.is_null() {
-        err = -ENOMEM;
-        arch::syscall_return(curthread!(), err as usize);
-        return;
-    }
+    let vm_entry = Box::leak(VmEntry::alloc());
 
     /* initialize vm entry */
-    (*vm_entry).base   = (*args).addr;
-    (*vm_entry).size   = (*args).len;
-    (*vm_entry).flags  = if (*args).prot & PROT_READ  != 0 { VM_UR } else { 0 };
-    (*vm_entry).flags |= if (*args).prot & PROT_WRITE != 0 { VM_UW } else { 0 };
-    (*vm_entry).flags |= if (*args).prot & PROT_EXEC  != 0 { VM_UX } else { 0 };
-    (*vm_entry).flags |= if (*args).flags & MAP_SHARED != 0 { VM_SHARED } else { 0 };
-    (*vm_entry).off    = (*args).off as usize;
+    vm_entry.base   = (*args).addr;
+    vm_entry.size   = (*args).len;
+    vm_entry.flags  = if (*args).prot & PROT_READ  != 0 { VM_UR } else { 0 };
+    vm_entry.flags |= if (*args).prot & PROT_WRITE != 0 { VM_UW } else { 0 };
+    vm_entry.flags |= if (*args).prot & PROT_EXEC  != 0 { VM_UX } else { 0 };
+    vm_entry.flags |= if (*args).flags & MAP_SHARED != 0 { VM_SHARED } else { 0 };
+    vm_entry.off    = (*args).off as usize;
 
-    (*vm_entry).vm_object = vm_object_vnode((*file).backend.vnode);
+    vm_entry.vm_object = vm_object_vnode((*file).backend.vnode);
 
     if (*args).flags & MAP_FIXED == 0 {
         /* allocate memory region */
@@ -864,13 +858,13 @@ unsafe fn sys_mmap(args: *mut MmapArgs, ret: *mut *mut u8) {
 
     let vm_space = &mut (*curproc!()).vm_space;
 
-    err = vm_space.insert(&mut *vm_entry);
+    err = vm_space.insert(vm_entry);
     if err != 0 {
-        if !(*vm_entry).qnode.is_null() {
-            (*vm_space).vm_entries.node_remove((*vm_entry).qnode);
+        if !vm_entry.qnode.is_null() {
+            vm_space.vm_entries.node_remove(vm_entry.qnode);
         }
 
-        kfree(vm_entry as *mut u8);
+        Box::from_raw(vm_entry);
 
         arch::syscall_return(curthread!(), err as usize);
         return;
@@ -880,18 +874,18 @@ unsafe fn sys_mmap(args: *mut MmapArgs, ret: *mut *mut u8) {
         err = vfs_map(vm_space, vm_entry);
 
         if err != 0 {
-            if !(*vm_entry).qnode.is_null() {
-                (*vm_space).vm_entries.node_remove((*vm_entry).qnode);
+            if !vm_entry.qnode.is_null() {
+                vm_space.vm_entries.node_remove(vm_entry.qnode);
             }
 
-            kfree(vm_entry as *mut u8);
+            Box::from_raw(vm_entry);
 
             arch::syscall_return(curthread!(), err as usize);
             return;
         }
     }
 
-    *ret = (*vm_entry).base as *mut u8;
+    *ret = vm_entry.base as *mut u8;
 
     arch::syscall_return(curthread!(), err as usize);
     return;
