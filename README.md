@@ -3,7 +3,7 @@
 This is the kernel for AquilaOS re-written in Rust. Currently it's `unsafe` mess with a lot of traces of C code.
 
 
-# Build
+## Build
 
 Prerequisites:
 * rustc nightly (1.45.0)
@@ -17,14 +17,17 @@ $ cargo post xbuild --target configs/i686/i686-unknown-none.json --release
 ```
 
 
-# Run
+## Run
 
-The kernel `kernel.elf` is multiboot compliant and you can use any multiboot bootloader to use it.
+The kernel is multiboot compliant and you can use any multiboot bootloader to use it.
 You need a ramdisk image from aquila in order to use the system, a binary image is provided in this repo
 for ease of use (it will be removed later).
 
 
+For simplicity you can use Qemu directly to load the kernel and the ramdisk:
 ```
 $ qemu-kvm -kernel target/i686-unknown-none/release/kernel.elf -nographic -initrd initrd.img
 ```
 (on debian based distros, you might need to use `$ qemu-system-i386 -enable-kvm` instead)
+
+(Note: to quit in `nographic` mode in Qemu use Ctrl-A+X)
