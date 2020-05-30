@@ -58,7 +58,7 @@ impl VmEntry {
             }
 
             if !self.vm_object.is_null() {
-                vm_object_decref(self.vm_object);
+                (*self.vm_object).decref();
             }
         }
     }

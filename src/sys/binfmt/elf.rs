@@ -275,7 +275,7 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
                 vm_entry.flags |= VM_COPY;
             }
 
-            vm_object_incref(vm_entry.vm_object);
+            (*vm_entry.vm_object).incref();
 
             if base + memsz > proc_heap {
                 proc_heap = base + memsz;

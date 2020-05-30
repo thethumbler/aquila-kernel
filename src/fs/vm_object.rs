@@ -66,7 +66,7 @@ pub unsafe fn vnode_page_in(vm_object: *mut VmObject, off: off_t) -> *mut VmPage
     mm_page_map(kvm_space.pmap, &__LOAD as *const _ as usize, (*vm_page).paddr, VM_KW as isize);
     vfs_read(vnode, (*vm_page).off, PAGE_SIZE, &__LOAD.page as *const _ as *mut u8);
 
-    vm_object_page_insert(vm_object, vm_page);
+    (*vm_object).insert(vm_page);
 
     return vm_page;
 }

@@ -113,7 +113,7 @@ impl VmSpace {
 
                 if !s_entry.vm_object.is_null() {
                     let vm_object = &mut *s_entry.vm_object;
-                    vm_object.refcnt += 1;
+                    vm_object.incref();
                 }
 
                 if (s_entry.flags & (VM_UW|VM_KW)) != 0 && (s_entry.flags & VM_SHARED) == 0 {
