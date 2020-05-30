@@ -39,7 +39,7 @@ unsafe fn pf_present(info: *mut FaultInfo) -> isize {
      * we can't handle it here and have to fallthrough to 
      * other handlers
      */
-    if vm_anon.is_null() || (*vm_anon).refcnt != 1 {
+    if vm_anon.is_null() || (*vm_anon).refcnt() != 1 {
         return 0;
     }
 
@@ -83,9 +83,9 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     if (*vm_anon).flags & VM_COPY != 0 {
 
-        if ((*vm_anon).refcnt > 1) {
+        if ((*vm_anon).refcnt() > 1) {
             let new_anon = (*vm_anon).copy();
-            vm_anon_decref(vm_anon);
+            (*vm_anon).decref();
             (*vm_entry).vm_anon = new_anon;
             vm_anon = new_anon;
         }
@@ -203,8 +203,8 @@ unsafe fn pf_object(info: *mut FaultInfo) -> isize {
 
     /* allocate a new anon if we don't have one */
     if (*vm_entry).vm_anon.is_null() {
-        (*vm_entry).vm_anon = VmAnon::new();
-        (*(*vm_entry).vm_anon).refcnt = 1;
+        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc());
+        (*(*vm_entry).vm_anon).incref();
     }
 
     let mut vm_aref = Box::leak(VmAref::alloc());
@@ -243,8 +243,8 @@ unsafe fn pf_zero(info: *mut FaultInfo) -> isize {
     let pmap = (*(*info).vm_space).pmap;
 
     if (*vm_entry).vm_anon.is_null() {
-        (*vm_entry).vm_anon = VmAnon::new();
-        (*(*vm_entry).vm_anon).refcnt = 1;
+        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc());
+        (*(*vm_entry).vm_anon).incref();
     }
 
     //let vm_aref = kmalloc(core::mem::size_of::<VmAref>(), &M_VM_AREF, M_ZERO) as *mut VmAref;

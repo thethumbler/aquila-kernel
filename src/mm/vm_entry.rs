@@ -54,7 +54,7 @@ impl VmEntry {
     pub fn destroy(&mut self) {
         unsafe {
             if !self.vm_anon.is_null() {
-                vm_anon_decref(self.vm_anon);
+                (*self.vm_anon).decref();
             }
 
             if !self.vm_object.is_null() {
