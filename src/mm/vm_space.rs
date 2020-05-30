@@ -77,6 +77,21 @@ impl VmSpace {
         return 0;
     }
 
+    pub fn destroy(&mut self) {
+        unsafe {
+            let vm_entries = &mut self.vm_entries;
+            let mut vm_entry = vm_entries.dequeue();
+
+            while !vm_entry.is_none() {
+                (*vm_entry.unwrap()).destroy();
+                Box::from_raw(vm_entry.unwrap());
+                vm_entry = (*vm_entries).dequeue();
+            }
+
+            pmap_remove_all(self.pmap);
+        }
+    }
+
     pub fn fork(&mut self, dst: &mut VmSpace) -> isize {
         /* copy vm entries */
         let src_vm_entries = &mut self.vm_entries;
@@ -114,44 +129,4 @@ impl VmSpace {
 
         return 0;
     }
-}
-
-pub unsafe fn vm_space_find(vm_space: *mut VmSpace, vaddr: usize) -> *mut VmEntry {
-    if vm_space.is_null() {
-        return core::ptr::null_mut();
-    }
-
-    let r = (*vm_space).find(vaddr);
-
-    if r.is_some() {
-        r.unwrap() as *const _ as *mut VmEntry
-    } else {
-        core::ptr::null_mut()
-    }
-}
-
-pub unsafe fn vm_space_destroy(vm_space: *mut VmSpace) -> () {
-    if vm_space.is_null() {
-        return;
-    }
-
-    let vm_entries = &mut (*vm_space).vm_entries;
-    let mut vm_entry = (*vm_entries).dequeue();
-
-    while !vm_entry.is_none() {
-        (*vm_entry.unwrap()).destroy();
-        Box::from_raw(vm_entry.unwrap());
-        vm_entry = (*vm_entries).dequeue();
-    }
-
-    pmap_remove_all((*vm_space).pmap);
-}
-
-pub unsafe fn vm_space_fork(src: *mut VmSpace, dst: *mut VmSpace) -> isize {
-    if src.is_null() || dst.is_null() {
-        //return -EINVAL;
-        return -1;
-    }
-
-    (*src).fork(&mut *dst)
 }

@@ -131,7 +131,7 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     }
 
     /* copy virtual memory space */
-    err = vm_space_fork(&mut (*proc).vm_space, &mut (*fork).vm_space);
+    err = (*proc).vm_space.fork(&mut (*fork).vm_space);
     if err != 0 {
         //goto error;
         return err;

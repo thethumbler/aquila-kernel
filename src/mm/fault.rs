@@ -276,17 +276,18 @@ pub unsafe fn mm_page_fault(vaddr: usize, flags: isize) -> () {
 
     let vm_space = &mut (*curproc!()).vm_space;
     let pmap = (*vm_space).pmap;
-    let mut vm_entry = core::ptr::null_mut();
 
     /* look for vm_entry that contains the page */
-    vm_entry = vm_space_find(vm_space, addr);
+    let vm_entry = vm_space.find(addr);
 
     /* segfault if there is no entry or the permissions are incorrect */
-    if vm_entry.is_null() || check_violation(flags as usize, (*vm_entry).flags) != 0 {
+    if vm_entry.is_none() || check_violation(flags as usize, (*vm_entry.unwrap()).flags) != 0 {
         //print!("will signal process\n");
         signal_proc_send(curproc!(), SIGSEGV);
         return;
     }
+
+    let vm_entry = vm_entry.unwrap() as *const _ as *mut VmEntry;
 
     /* get page offset in object */
     let off = addr - (*vm_entry).base + (*vm_entry).off;

@@ -296,7 +296,7 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 
     let vm_space = &mut (*proc).vm_space;
 
-    vm_space_destroy(vm_space);
+    vm_space.destroy();
     pmap_decref((*vm_space).pmap);
 
     /* Free kernel-space resources */

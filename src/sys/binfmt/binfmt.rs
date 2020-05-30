@@ -26,7 +26,7 @@ static BINFMT_LIST: [BinaryFormat; NR_BINFMT] = [
 unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode, binfmt: *const BinaryFormat, proc_ref: *mut *mut Process) -> isize {
     let mut err = 0;
 
-    vm_space_destroy(&mut (*proc).vm_space);
+    (*proc).vm_space.destroy();
 
     err = (*binfmt).load.unwrap()(proc, path, vnode);
     if err != 0 {
