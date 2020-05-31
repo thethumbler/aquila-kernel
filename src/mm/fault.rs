@@ -146,7 +146,7 @@ unsafe fn pf_anon(info: *mut FaultInfo) -> isize {
 
     pmap_page_copy((*vm_page).paddr, (*new_page).paddr);
 
-    let mut new_aref = Box::leak(VmAref::alloc());
+    let mut new_aref = Box::leak(VmAref::alloc(VmAref::new()));
 
     new_aref.incref();
     new_aref.flags = (*aref).flags;
@@ -203,11 +203,11 @@ unsafe fn pf_object(info: *mut FaultInfo) -> isize {
 
     /* allocate a new anon if we don't have one */
     if (*vm_entry).vm_anon.is_null() {
-        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc());
+        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc(VmAnon::new()));
         (*(*vm_entry).vm_anon).incref();
     }
 
-    let mut vm_aref = Box::leak(VmAref::alloc());
+    let mut vm_aref = Box::leak(VmAref::alloc(VmAref::new()));
 
     vm_aref.vm_page = vm_page;
     vm_aref.incref();
@@ -243,7 +243,7 @@ unsafe fn pf_zero(info: *mut FaultInfo) -> isize {
     let pmap = (*(*info).vm_space).pmap;
 
     if (*vm_entry).vm_anon.is_null() {
-        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc());
+        (*vm_entry).vm_anon = Box::leak(VmAnon::alloc(VmAnon::new()));
         (*(*vm_entry).vm_anon).incref();
     }
 
@@ -256,7 +256,7 @@ unsafe fn pf_zero(info: *mut FaultInfo) -> isize {
     (*new_page).off = (*info).off;
     (*new_page).refcnt = 1;
 
-    let vm_aref = Box::leak(VmAref::alloc());
+    let vm_aref = Box::leak(VmAref::alloc(VmAref::new()));
 
     vm_aref.vm_page = new_page;
     vm_aref.incref();

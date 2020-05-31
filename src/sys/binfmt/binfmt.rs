@@ -41,7 +41,7 @@ unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode
     (*proc).heap = (*proc).heap_start;
 
     /* Create heap vm_entry */
-    let heap_vm = Box::leak(VmEntry::alloc());
+    let heap_vm = Box::leak(VmEntry::alloc(VmEntry::new()));
 
     heap_vm.base  = (*proc).heap_start;
     heap_vm.size  = 0;
@@ -53,7 +53,7 @@ unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode
     (*proc).heap_vm  = heap_vm;
 
     /* Create stack vm_entry */
-    let stack_vm = Box::leak(VmEntry::alloc());
+    let stack_vm = Box::leak(VmEntry::alloc(VmEntry::new()));
 
     stack_vm.base  = USER_STACK_BASE;
     stack_vm.size  = USER_STACK_SIZE;

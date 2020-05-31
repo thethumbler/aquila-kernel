@@ -838,7 +838,7 @@ unsafe fn sys_mmap(args: *mut MmapArgs, ret: *mut *mut u8) {
         return;
     }
 
-    let vm_entry = Box::leak(VmEntry::alloc());
+    let vm_entry = Box::leak(VmEntry::alloc(VmEntry::new()));
 
     /* initialize vm entry */
     vm_entry.base   = (*args).addr;

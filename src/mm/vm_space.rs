@@ -99,7 +99,7 @@ impl VmSpace {
         for qnode in src_vm_entries.iter() {
             unsafe {
                 let s_entry = &*(qnode.value as *mut VmEntry);
-                let mut d_entry = Box::leak(VmEntry::alloc());
+                let mut d_entry = Box::leak(VmEntry::alloc(VmEntry::new()));
 
                 *d_entry = *s_entry;
                 (*d_entry).qnode = (*dst).vm_entries.enqueue(&mut *d_entry);

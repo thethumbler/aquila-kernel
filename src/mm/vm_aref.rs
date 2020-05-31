@@ -1,7 +1,7 @@
 use prelude::*;
 use mm::*;
 
-malloc_define!(M_ANON_REF, "anon-ref\0", "anonymous virtual memory object reference\0");
+malloc_define!(M_VM_AREF, "vm-aref\0", "anonymous virtual memory object reference\0");
 
 pub struct VmAref {
     /** vm page associated with the aref */
@@ -15,8 +15,16 @@ pub struct VmAref {
 }
 
 impl VmAref {
-    pub fn alloc() -> Box<VmAref> {
-        unsafe { Box::new_zeroed_tagged(&M_ANON_REF).assume_init() }
+    pub fn new() -> VmAref {
+        VmAref {
+            vm_page: core::ptr::null_mut(),
+            refcnt: 0,
+            flags: 0,
+        }
+    }
+
+    pub fn alloc(val: VmAref) -> Box<VmAref> {
+        Box::new_tagged(&M_VM_AREF, val)
     }
 
     /** destroy all resources associated with an aref */

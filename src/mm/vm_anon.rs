@@ -26,13 +26,17 @@ impl VmAnon {
         }
     }
 
-    /** create new anon structure */
-    pub fn alloc() -> Box<VmAnon> {
-        Box::new_tagged(&M_VM_ANON, VmAnon {
+    pub fn new() -> VmAnon {
+        VmAnon {
             arefs: HashMap::alloc(),
 
             ..VmAnon::empty()
-        })
+        }
+    }
+
+    /** create new anon structure */
+    pub fn alloc(val: VmAnon) -> Box<VmAnon> {
+        Box::new_tagged(&M_VM_ANON, val)
     }
 
     /** increment number of references to a vm anon */
@@ -116,7 +120,7 @@ impl VmAnon {
     /** clone an existing anon into a new anon */
     pub fn copy(&self) -> *mut VmAnon {
         unsafe {
-            let new_anon = Box::leak(VmAnon::alloc());
+            let new_anon = Box::leak(VmAnon::alloc(VmAnon::new()));
 
             new_anon.flags = self.flags & !VM_COPY;
             new_anon.refcnt = 1;

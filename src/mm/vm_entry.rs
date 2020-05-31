@@ -1,9 +1,8 @@
 use prelude::*;
 
 use mm::*;
-use crate::malloc_define;
 
-malloc_define!(M_MAP_ENTRY, "map_entry\0", "virtual memory map entry\0");
+malloc_define!(M_VM_ENTRY, "vm-entry\0", "virtual memory map entry\0");
 
 #[derive(Copy, Clone, Debug)]
 pub struct VmEntry {
@@ -45,9 +44,13 @@ impl VmEntry {
             qnode: core::ptr::null_mut(),
         }
     }
+
+    pub fn new() -> Self {
+        VmEntry::none()
+    }
     
-    pub fn alloc() -> Box<VmEntry> {
-        unsafe { Box::new_zeroed_tagged(&M_MAP_ENTRY).assume_init() }
+    pub fn alloc(val: VmEntry) -> Box<VmEntry> {
+        Box::new_tagged(&M_VM_ENTRY, val)
     }
 
     /** destroy all resources associated with a vm entry */

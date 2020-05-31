@@ -246,7 +246,7 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
             /* page align size */
             memsz = page_round!(memsz) as u32;
 
-            let vm_entry = Box::leak(VmEntry::alloc());
+            let vm_entry = Box::leak(VmEntry::alloc(VmEntry::new()));
 
             vm_entry.base = base as usize;
             vm_entry.size = memsz as usize;
@@ -288,7 +288,7 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
 
                 if vm_entry.base + vm_entry.size > bss_init_end {
                     let sz = bss_init_end - vm_entry.base;
-                    let split = Box::leak(VmEntry::alloc());
+                    let split = Box::leak(VmEntry::alloc(VmEntry::new()));
 
                     split.base = bss_init_end;
                     split.size = vm_entry.size - sz;
