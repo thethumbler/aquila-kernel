@@ -49,14 +49,14 @@ pub unsafe fn session_new(proc: *mut Process) -> isize {
         return -ENOMEM;
     }
 
-    (*session).pgps = Some(Queue::alloc());
+    (*session).pgps = Some(Queue::alloc(Queue::new()));
     if (*session).pgps.is_none() {
         //goto e_nomem;
         //FIXME
         return -ENOMEM;
     }
 
-    (*pgrp).procs = Some(Queue::alloc());
+    (*pgrp).procs = Some(Queue::alloc(Queue::new()));
     if (*pgrp).procs.is_none() {
         //goto e_nomem;
         //FIXME

@@ -114,7 +114,7 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     }
 
     /* allocate new signals queue */
-    (*fork).sig_queue = Some(Queue::alloc());
+    (*fork).sig_queue = Some(Queue::alloc(Queue::new()));
     if (*fork).sig_queue.is_none() {
         err = -ENOMEM;
         //goto error;

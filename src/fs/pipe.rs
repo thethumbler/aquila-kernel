@@ -103,7 +103,7 @@ pub unsafe fn pipefs_pipe(read: *mut FileDescriptor, write: *mut FileDescriptor)
         return -ENOMEM;
     }
 
-    (*(*read).backend.vnode).read_queue = Some(Queue::alloc());
+    (*(*read).backend.vnode).read_queue = Some(Queue::alloc(Queue::new()));
     if (*(*read).backend.vnode).read_queue.is_none() {
         kfree((*read).backend.vnode as *mut u8);
         kfree((*write).backend.vnode as *mut u8);

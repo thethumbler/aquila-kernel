@@ -117,8 +117,8 @@ pub unsafe fn uart_file_open(file: *mut FileDescriptor) -> isize {
         (*u)._in = ringbuf_new(UART_BUF);
         (*u)._out = ringbuf_new(UART_BUF);
         tty_new(curproc!(), 0, Some(uart_master_write), Some(uart_slave_write), u as *mut u8, &mut (*u).tty);
-        (*(*file).backend.vnode).read_queue  = Some(Queue::alloc());
-        (*(*file).backend.vnode).write_queue = Some(Queue::alloc());
+        (*(*file).backend.vnode).read_queue  = Some(Queue::alloc(Queue::new()));
+        (*(*file).backend.vnode).write_queue = Some(Queue::alloc(Queue::new()));
     }
 
     return 0;

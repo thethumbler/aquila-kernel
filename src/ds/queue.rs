@@ -18,8 +18,16 @@ pub struct QueueNode<T> {
 }
 
 impl<T> QueueNode<T> {
-    pub fn alloc() -> Box<QueueNode<T>> {
-        unsafe { Box::new_zeroed_tagged(&M_QNODE).assume_init() }
+    pub fn new(value: T) -> QueueNode<T> {
+        QueueNode {
+            value,
+            prev: core::ptr::null_mut(),
+            next: core::ptr::null_mut(),
+        }
+    }
+
+    pub fn alloc(val: QueueNode<T>) -> Box<QueueNode<T>> {
+        Box::new_tagged(&M_QNODE, val)
     }
 }
 
@@ -80,8 +88,12 @@ impl<T: Copy> Queue<T> {
         }
     }
 
-    pub fn alloc() -> Box<Queue<T>> {
-        Box::new_tagged(&M_QUEUE, Queue::empty())
+    pub fn new() -> Queue<T> {
+        Queue::empty()
+    }
+
+    pub fn alloc(val: Queue<T>) -> Box<Queue<T>> {
+        Box::new_tagged(&M_QUEUE, val)
     }
 
     pub fn count(&self) -> usize {
@@ -90,9 +102,7 @@ impl<T: Copy> Queue<T> {
 
     pub fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {
         unsafe {
-            let mut node = Box::leak(QueueNode::alloc());
-
-            node.value = value;
+            let mut node = Box::leak(QueueNode::alloc(QueueNode::new(value)));
 
             if self.count == 0 {
                 /* queue is not initalized */
@@ -112,11 +122,10 @@ impl<T: Copy> Queue<T> {
 
     pub fn enqueue_before(&mut self, qnode: *mut QueueNode<T>, value: T) -> *mut QueueNode<T> {
         unsafe {
-            let mut node = Box::leak(QueueNode::alloc());
+            let mut node = Box::leak(QueueNode::alloc(QueueNode::new(value)));
 
             node.prev  = (*qnode).prev;
             node.next  = qnode;
-            node.value = value;
 
             if !(*qnode).prev.is_null() {
                 (*(*qnode).prev).next = node;

@@ -233,7 +233,7 @@ pub unsafe extern "C" fn proc_init(proc: *mut Process) -> isize {
     }
 
     /* initalize signals queue */
-    (*proc).sig_queue = Some(Queue::alloc());
+    (*proc).sig_queue = Some(Queue::alloc(Queue::new()));
 
     if (*proc).sig_queue.is_none() {
         err = -ENOMEM;

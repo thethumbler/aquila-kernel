@@ -46,7 +46,7 @@ pub unsafe fn pgrp_new(proc: *mut Process, pgroup_ref: *mut *mut ProcessGroup) -
     /* remove the process from the old process group */
     (*(*proc).pgrp).procs.as_mut().unwrap().node_remove((*proc).pgrp_node);
 
-    pgrp.procs = Some(Queue::alloc());
+    pgrp.procs = Some(Queue::alloc(Queue::new()));
 
     (*proc).pgrp_node = (*pgrp).procs.as_mut().unwrap().enqueue(proc);
     if (*proc).pgrp_node.is_null() {
