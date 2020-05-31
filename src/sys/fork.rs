@@ -73,7 +73,7 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     }
 
     /* new process main thread */
-    fork_thread = (*(*fork).threads.head).value as *mut Thread;
+    fork_thread = (*fork).threads.head().unwrap().value;
 
     /* parent process */
     let mut proc = (*thread).owner;
@@ -138,10 +138,9 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     }
 
     /* fix heap & stack entry pointers -- XXX yes, we are doing this */
-    let mut pvm_node = (*proc).vm_space.vm_entries.head;
-    let mut fvm_node = (*fork).vm_space.vm_entries.head;
+    for (pvm_node, fvm_node) in (*proc).vm_space.vm_entries.iter()
+        .zip((*fork).vm_space.vm_entries.iter()) {
 
-    while !pvm_node.is_null() {
         let pvm_entry = (*pvm_node).value as *mut VmEntry;
         let fvm_entry = (*fvm_node).value as *mut VmEntry;
 
@@ -152,9 +151,6 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
         if pvm_entry == (*proc).stack_vm {
             (*fork).stack_vm = fvm_entry;
         }
-
-        pvm_node = (*pvm_node).next;
-        fvm_node = (*fvm_node).next;
     }
 
     /* call arch specific fork handler */

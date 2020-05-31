@@ -28,13 +28,13 @@ pub unsafe fn arch_proc_init(proc: *mut Process) {
     (*arch).esp    = USER_STACK;
     (*arch).eflags = X86_EFLAGS;
 
-    let thread = (*(*proc).threads.head).value as *mut Thread;
+    let thread = (*proc).threads.head().unwrap().value;
     (*thread).arch = arch as *mut u8;
 }
 
 pub unsafe fn arch_init_execve(proc: *mut Process, argc: isize, argp: *const *const u8, envc: isize, envp: *const *const u8) {
     let pmap = (*proc).vm_space.pmap;
-    let thread = (*(*proc).threads.head).value as *mut Thread;
+    let thread = (*proc).threads.head().unwrap().value;
 
     curthread!() = thread;
     pmap_switch(pmap);

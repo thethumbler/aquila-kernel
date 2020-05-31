@@ -64,7 +64,7 @@ unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode
 
     (*proc).stack_vm  = stack_vm;
 
-    let thread = (*(*proc).threads.head).value as *mut Thread;
+    let thread = (*proc).threads.head().unwrap().value;
     (*thread).stack.base = USER_STACK_BASE;
     (*thread).stack.size = USER_STACK_BASE;
 

@@ -52,7 +52,7 @@ pub unsafe fn kmain(boot: *const BootInfo) {
         panic!("failed to allocate process structure for init");
     }
 
-    curthread!() = (*init).threads.head as *mut Thread;
+    curthread!() = (*init).threads.head().unwrap().value;
     curproc!()   = init;
 
     pmap_switch((*init).vm_space.pmap);

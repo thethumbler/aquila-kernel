@@ -54,7 +54,7 @@ pub unsafe fn sched_init_spawn(init: *mut Process) {
 
     //print!("sizeof(Thread) = {}\n", core::mem::size_of::<Thread>());
 
-    curthread!() = (*(*init).threads.head).value as *mut Thread;
+    curthread!() = (*init).threads.head().unwrap().value;
     (*curthread!()).state = ThreadState::RUNNABLE;
 
     //print!("{:?}\n", *curthread!());

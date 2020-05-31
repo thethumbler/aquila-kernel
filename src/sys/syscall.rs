@@ -95,7 +95,7 @@ unsafe fn sys_fork() {
 
     /* Returns are handled inside proc_fork */
     if !fork.is_null() {
-        let thread = (*(*fork).threads.head).value as *mut Thread;
+        let thread = (*fork).threads.head().unwrap().value;
         sched_thread_ready(thread);
     }
 }

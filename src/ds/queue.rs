@@ -33,9 +33,9 @@ unsafe impl<T> Sync for QueueNode<T> {}
 #[derive(Copy, Clone, Debug)]
 pub struct Queue<T> {
     count: usize,
-    pub head: *mut QueueNode<T>,
-    pub tail: *mut QueueNode<T>,
-    pub flags: usize,
+    head: *mut QueueNode<T>,
+    tail: *mut QueueNode<T>,
+    flags: usize,
 }
 
 unsafe impl<T: Sync> Sync for Queue<T> {}
@@ -95,6 +95,14 @@ impl<T: Copy> Queue<T> {
 
     pub fn count(&self) -> usize {
         self.count
+    }
+
+    pub fn head(&self) -> Option<&QueueNode<T>> {
+        if self.head.is_null() {
+            None
+        } else {
+            unsafe { Some(&*self.head) }
+        }
     }
 
     pub fn enqueue(&mut self, value: T) -> *mut QueueNode<T> {

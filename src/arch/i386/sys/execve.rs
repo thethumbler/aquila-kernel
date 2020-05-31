@@ -17,7 +17,7 @@ pub unsafe fn tlb_flush() {
 }
 
 pub unsafe fn arch_sys_execve(proc: *mut Process, argc: usize, _argp: *const *const u8, envc: usize, _envp: *const *const u8) {
-    let thread = (*(*proc).threads.head).value as *mut Thread;
+    let thread = (*proc).threads.head().unwrap().value;
     let arch = (*thread).arch as *mut X86Thread;
 
     (*arch).eip = (*proc).entry;

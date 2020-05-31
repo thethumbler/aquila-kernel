@@ -102,7 +102,7 @@ pub unsafe fn signal_proc_send(proc: *mut Process, signal: isize) -> isize {
         (*proc).sig_queue.as_mut().unwrap().enqueue(signal);
 
         /* wake up main thread if sleeping - XXX */
-        let thread = (*(*proc).threads.head).value as *mut Thread;
+        let thread = (*proc).threads.head().unwrap().value;
 
         if (*thread).state == ThreadState::ISLEEP {
             thread_queue_wakeup((*thread).sleep_queue);
