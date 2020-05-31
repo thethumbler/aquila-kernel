@@ -28,7 +28,7 @@ impl VmAnon {
 
     pub fn new() -> VmAnon {
         VmAnon {
-            arefs: HashMap::alloc(),
+            arefs: Box::leak(HashMap::alloc(HashMap::new(0))),
 
             ..VmAnon::empty()
         }

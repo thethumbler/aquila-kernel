@@ -2,14 +2,17 @@ extern crate alloc;
 
 pub use kern::types::*;
 pub use bits::errno::*;
+
+// data structures / collections
 pub use ds::*;
+pub use alloc::boxed::*;
+pub use alloc::rc::*;
+pub use alloc::vec::*;
 
 pub use mm::kvmem::*;
 pub use kern::types::*;
 pub use kern::string::*;
 pub use kern::module::*;
-pub use alloc::boxed::Box;
-pub use alloc::rc::Rc;
 pub use kern::print::cstr;
 pub use crate::{print};
 

@@ -26,7 +26,7 @@ pub unsafe fn vm_object_vnode(vnode: *mut Vnode) -> *mut VmObject {
         }
 
         (*vm_object).objtype = VMOBJ_FILE as isize;
-        (*vm_object).pages = HashMap::alloc();
+        (*vm_object).pages = Box::leak(HashMap::alloc(HashMap::new(0)));
 
         if (*vm_object).pages.is_null() {
             kfree(vm_object as *mut u8);

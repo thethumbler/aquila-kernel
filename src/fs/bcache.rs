@@ -28,7 +28,7 @@ malloc_define!(M_CACHE_BLOCK, "cache block\0", "cached block structure\0");
 //}
 
 pub unsafe fn bcache_init(bcache: *mut BlockCache) {
-    (*bcache).hashmap = HashMap::alloc();
+    (*bcache).hashmap = Box::leak(HashMap::alloc(HashMap::new(0)));
 }
 
 pub unsafe fn bcache_insert(bcache: *mut BlockCache, off: off_t, data: *mut u8) -> isize {

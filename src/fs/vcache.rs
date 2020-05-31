@@ -45,7 +45,7 @@ impl VirtualNodeCache {
 
 /* initialize vnode caching structure */
 pub unsafe fn vcache_init(vcache: *mut VirtualNodeCache) {
-    (*vcache).hashmap = HashMap::alloc();
+    (*vcache).hashmap = Box::leak(HashMap::alloc(HashMap::new(0)));
 }
 
 pub unsafe fn vcache_insert(vcache: *mut VirtualNodeCache, vnode: *mut Vnode) -> isize {
