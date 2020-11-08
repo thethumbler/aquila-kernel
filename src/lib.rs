@@ -2,7 +2,6 @@
 #![feature(lang_items)]
 #![feature(const_fn)]
 #![feature(decl_macro)]
-#![feature(const_transmute)]
 #![feature(llvm_asm)]
 #![feature(panic_info_message)]
 #![feature(alloc_prelude)]
@@ -10,6 +9,7 @@
 #![feature(alloc_error_handler)]
 #![feature(new_uninit)]
 #![feature(const_in_array_repeat_expressions)]
+#![feature(const_fn_fn_ptr_basics)]
 
 #![feature(const_mut_refs)]
 
@@ -36,7 +36,7 @@ pub mod boot;
 
 use mm::*;
 
-use alloc::alloc::{GlobalAlloc, Layout, AllocErr};
+use alloc::alloc::{GlobalAlloc, Layout, AllocError};
 malloc_declare!(M_BUFFER);
 
 struct Allocator;

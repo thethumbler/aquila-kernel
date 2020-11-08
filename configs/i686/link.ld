@@ -43,11 +43,11 @@ SECTIONS {
     }
     
     .data : AT(ADDR(.data) - _VMA) ALIGN(0x1000) {
-        *(.data)
+        *(.data*)
     }
     
     .bss : AT(ADDR(.bss) - _VMA) ALIGN(0x1000) {
-        *(.bss)
+        *(.bss*)
     }
 
     /*
