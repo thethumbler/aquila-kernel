@@ -3,8 +3,6 @@ use prelude::*;
 use mm::*;
 use crate::{malloc_declare};
 
-malloc_declare!(M_BUFFER);
-
 #[no_mangle]
 pub unsafe extern "C" fn memmove(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     let n = n as isize;
@@ -116,7 +114,7 @@ pub unsafe extern "C" fn strcpy(dst: *mut u8, src: *const u8) -> *mut u8 {
 #[no_mangle]
 pub unsafe extern "C" fn strdup(s: *const u8) -> *mut u8 {
     let len = strlen(s);
-    let dst = kmalloc(len + 1, &M_BUFFER, 0);
+    let dst = Buffer::new(len + 1).leak();
 
     return memcpy(dst, s, len + 1);
 }
@@ -141,7 +139,7 @@ pub unsafe fn tokenize(s: *const u8, c: u8) -> *mut *mut u8 {
     let len = strlen(s);
 
     if len == 0 {
-        let ret = kmalloc(core::mem::size_of::<*mut u8>(), &M_BUFFER, 0) as *mut *mut u8;
+        let ret = Buffer::new(core::mem::size_of::<*mut u8>()).leak() as *mut *mut u8;
         *ret = core::ptr::null_mut();
         return ret;
     }
@@ -158,7 +156,7 @@ pub unsafe fn tokenize(s: *const u8, c: u8) -> *mut *mut u8 {
         count += 1;
     }
     
-    let ret = kmalloc(core::mem::size_of::<*mut u8>() * (count + 1), &M_BUFFER, 0) as *mut *mut u8;
+    let ret = Buffer::new(core::mem::size_of::<*mut u8>() * (count + 1)).leak() as *mut *mut u8;
 
     let mut j = 0;
     *ret.offset(j) = tokens;
