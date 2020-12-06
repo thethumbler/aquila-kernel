@@ -1,29 +1,27 @@
 use prelude::*;
 
 use mm::*;
+use ds::buffer::Buffer;
 use crate::{malloc_define, malloc_declare};
 
 malloc_define!(M_RINGBUFFER, "ring-buffer\0", "ringbuffer structure\0");
-malloc_declare!(M_BUFFER);
 
 macro_rules! ring_index {
     ($ring:expr, $i:expr) => {
-        (($i) % ((*$ring).size))
+        (($i) % ((*$ring).size()))
     }
 }
 
 pub struct RingBuffer {
-    pub buf: *mut u8,
-    pub size: usize,
-    pub head: usize,
-    pub tail: usize,
+    buf: Buffer,
+    head: usize,
+    tail: usize,
 }
 
 impl RingBuffer {
     pub fn new(size: usize) -> Self {
         Self {
-            buf: unsafe { kmalloc(size, &M_BUFFER, 0) },
-            size: size,
+            buf: Buffer::new(size),
             head: 0,
             tail: 0,
         }
@@ -33,12 +31,16 @@ impl RingBuffer {
         Box::new_tagged(&M_RINGBUFFER, val)
     }
 
+    pub fn size(&self) -> usize {
+        self.buf.size()
+    }
+
     pub fn available(&self) -> usize {
         if self.tail >= self.head {
             return self.tail - self.head;
         }
 
-        return self.tail + self.size - self.head;
+        return self.tail + self.size() - self.head;
     }
 
     pub fn read(&mut self, n: usize, buf: *mut u8) -> usize {
@@ -52,11 +54,11 @@ impl RingBuffer {
                 break;
             }
 
-            if self.head == self.size {
+            if self.head == self.size() {
                 self.head = 0;
             }
 
-            unsafe { *buf = *self.buf.offset(self.head as isize); }
+            unsafe { *buf = self.buf[self.head]; }
             self.head += 1;
             buf = unsafe { buf.offset(1) };
             n -= 1;
@@ -77,11 +79,11 @@ impl RingBuffer {
                 break;
             }
 
-            if self.tail == self.size {
+            if self.tail == self.size() {
                 self.tail = 0;
             }
             
-            unsafe { *self.buf.offset(self.tail as isize) = *buf; }
+            unsafe { self.buf[self.tail] = *buf; }
             self.tail += 1;
             buf = unsafe { buf.offset(1) };
             n -= 1;
@@ -102,7 +104,7 @@ impl RingBuffer {
         }
 
         while n > 0 {
-            if head == self.size {
+            if head == self.size() {
                 head = 0;
             }
 
@@ -110,7 +112,7 @@ impl RingBuffer {
                 break;
             }
 
-            unsafe { *buf = *self.buf.offset(head as isize); }
+            unsafe { *buf = self.buf[head]; }
             head += 1;
             buf = unsafe { buf.offset(1) };
             n -= 1;
@@ -131,11 +133,11 @@ impl RingBuffer {
                 self.head = ring_index!(self, self.head) + 1;
             }
 
-            if self.tail == self.size {
+            if self.tail == self.size() {
                 self.tail = 0;
             }
             
-            unsafe { *self.buf.offset(self.tail as isize) = *buf; }
+            unsafe { self.buf[self.tail] = *buf; }
             self.tail += 1;
             buf = unsafe { buf.offset(1) };
             n -= 1;
@@ -144,10 +146,4 @@ impl RingBuffer {
         return size - n;
     }
 
-}
-
-impl Drop for RingBuffer {
-    fn drop(&mut self) {
-        unsafe { kfree(self.buf as *mut u8); }
-    }
 }
