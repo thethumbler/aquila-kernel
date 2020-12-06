@@ -13,8 +13,8 @@ use sys::thread::*;
 pub struct Uart {
     pub name: *const u8,
 
-    pub _in:  *mut RingBuf,
-    pub _out: *mut RingBuf,
+    pub _in:  *mut RingBuffer,
+    pub _out: *mut RingBuffer,
 
     pub tty: *mut Tty,
 
@@ -45,13 +45,13 @@ pub unsafe fn uart_recieve_handler(u: *mut Uart, size: usize) {
 
 /* called when data is ready to be transmitted */
 pub unsafe fn uart_transmit_handler(u: *mut Uart, size: usize) {
-    let len = ringbuf_available((*u)._out);
+    let len = (*(*u)._out).available();
     let len = if size < len { size } else { len };
 
     for i in 0..len {
         let mut c = 0u8;
 
-        ringbuf_read((*u)._out, 1, &mut c);
+        (*(*u)._out).read(1, &mut c);
         (*u).transmit.unwrap()(u, c);
     }
 
@@ -61,7 +61,7 @@ pub unsafe fn uart_transmit_handler(u: *mut Uart, size: usize) {
 /* tty interface */
 pub unsafe fn uart_master_write(tty: *mut Tty, size: usize, buf: *const u8) -> isize {
     let u = (*tty).p as *mut Uart;
-    let s = ringbuf_write((*u)._out, size, buf as *mut u8);
+    let s = (*(*u)._out).write(size, buf as *mut u8);
     /* XXX */
     uart_transmit_handler(u, s);
     return s as isize;
@@ -69,7 +69,7 @@ pub unsafe fn uart_master_write(tty: *mut Tty, size: usize, buf: *const u8) -> i
 
 pub unsafe fn uart_slave_write(tty: *mut Tty, size: usize, buf: *const u8) -> isize {
     let u = (*tty).p as *mut Uart;
-    return ringbuf_write((*u)._in, size, buf as *mut u8) as isize;
+    return (*(*u)._in).write(size, buf as *mut u8) as isize;
 }
 
 pub unsafe fn uart_read(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, buf: *mut u8) -> isize {
@@ -79,7 +79,7 @@ pub unsafe fn uart_read(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, 
         return -EIO;
     }
 
-    return ringbuf_read((*u)._in, size, buf) as isize;
+    return (*(*u)._in).read(size, buf) as isize;
 }
 
 pub unsafe fn uart_write(dd: *mut DeviceDescriptor, _offset: off_t, size: usize, buf: *mut u8) -> isize {
@@ -114,8 +114,8 @@ pub unsafe fn uart_file_open(file: *mut FileDescriptor) -> isize {
         (*u).init.unwrap()(u);
         (*u).vnode = (*file).backend.vnode;
         /* TODO Error checking */
-        (*u)._in = ringbuf_new(UART_BUF);
-        (*u)._out = ringbuf_new(UART_BUF);
+        (*u)._in = Box::leak(RingBuffer::alloc(RingBuffer::new(UART_BUF)));
+        (*u)._out = Box::leak(RingBuffer::alloc(RingBuffer::new(UART_BUF)));
         tty_new(curproc!(), 0, Some(uart_master_write), Some(uart_slave_write), u as *mut u8, &mut (*u).tty);
         (*(*file).backend.vnode).read_queue  = Some(Queue::alloc(Queue::new()));
         (*(*file).backend.vnode).write_queue = Some(Queue::alloc(Queue::new()));
