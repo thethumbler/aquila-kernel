@@ -18,7 +18,7 @@ pub struct Pipe {
     pub w_ref: usize,
 
     /** ring buffer */
-    pub ring: *mut RingBuf,
+    pub ring: *mut RingBuffer,
 }
 
 malloc_define!(M_PIPE, "pipe", "pipe structure");
@@ -26,24 +26,24 @@ malloc_declare!(M_VNODE);
 
 unsafe fn pipefs_read(vnode: *mut Vnode, _offset: off_t, size: size_t, buf: *mut u8) -> usize {
     let pipe = (*vnode).p as *mut Pipe;
-    return ringbuf_read((*pipe).ring, size, buf);
+    return (*(*pipe).ring).read(size, buf);
 }
 
 unsafe fn pipefs_write(vnode: *mut Vnode, _offset: off_t, size: size_t, buf: *mut u8) -> usize {
     let pipe = (*vnode).p as *mut Pipe;
-    return ringbuf_write((*pipe).ring, size, buf);
+    return (*(*pipe).ring).write(size, buf);
 }
 
 unsafe fn pipefs_can_read(file: *mut FileDescriptor, size: size_t) -> isize {
     let node = (*file).backend.vnode;
     let pipe = (*node).p as *mut Pipe;
-    return (size <= ringbuf_available((*pipe).ring)) as isize;
+    return (size <= (*(*pipe).ring).available()) as isize;
 }
 
 unsafe fn pipefs_can_write(file: *mut FileDescriptor, size: size_t) -> isize {
     let node = (*file).backend.vnode;
     let pipe = (*node).p as *mut Pipe;
-    return (size >= (*(*pipe).ring).size - ringbuf_available((*pipe).ring)) as isize;
+    return (size >= (*(*pipe).ring).size - (*(*pipe).ring).available()) as isize;
 }
 
 unsafe fn pipefs_mkpipe(pipe_ref: *mut *mut Pipe) -> isize {
@@ -52,7 +52,7 @@ unsafe fn pipefs_mkpipe(pipe_ref: *mut *mut Pipe) -> isize {
         return -ENOMEM;
     }
 
-    (*pipe).ring = ringbuf_new(PIPE_BUFLEN);
+    (*pipe).ring = Box::leak(RingBuffer::alloc(RingBuffer::new((PIPE_BUFLEN))));
     
     if (*pipe).ring.is_null() {
         kfree(pipe as *mut u8);
@@ -69,7 +69,7 @@ unsafe fn pipefs_mkpipe(pipe_ref: *mut *mut Pipe) -> isize {
 unsafe fn pipefs_pfree(pipe: *mut Pipe) {
     if !pipe.is_null() {
         if !(*pipe).ring.is_null() {
-            ringbuf_free((*pipe).ring);
+            Box::from((*pipe).ring);
         }
 
         kfree(pipe as *mut u8);
