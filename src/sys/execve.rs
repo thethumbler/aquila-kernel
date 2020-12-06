@@ -8,8 +8,6 @@ use mm::*;
 
 use crate::{malloc_declare};
 
-malloc_declare!(M_BUFFER);
-
 pub unsafe fn proc_execve(thread: *mut Thread, path: *const u8, argp: *const *const u8, envp: *const *const u8) -> isize {
     let proc = (*thread).owner;
     let u_argp = argp;
@@ -34,8 +32,8 @@ pub unsafe fn proc_execve(thread: *mut Thread, path: *const u8, argp: *const *co
         }
     }
 
-    let mut argp = kmalloc(((argc + 1) as usize) * core::mem::size_of::<*const u8>(), &M_BUFFER, 0) as *mut *mut u8;
-    let mut envp = kmalloc(((envc + 1) as usize) * core::mem::size_of::<*const u8>(), &M_BUFFER, 0) as *mut *mut u8;
+    let mut argp = Buffer::new(((argc + 1) as usize) * core::mem::size_of::<*const u8>()).leak() as *mut *mut u8;
+    let mut envp = Buffer::new(((envc + 1) as usize) * core::mem::size_of::<*const u8>()).leak() as *mut *mut u8;
 
     *argp.offset(argc) = core::ptr::null_mut();
     *envp.offset(envc) = core::ptr::null_mut();

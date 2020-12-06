@@ -14,8 +14,6 @@ malloc_define!(M_VFS_PATH, b"vfs-path\0", b"vfs path structure\0");
 malloc_define!(M_VFS_NODE, b"vfs-node\0", b"vfs node structure\0");
 malloc_define!(M_FS_LIST, b"fs-list\0", b"filesystems list\0");
 
-malloc_declare!(M_BUFFER);
-
 pub struct UserOp {
     /* root directory */
     pub root:   *mut u8,
@@ -205,7 +203,7 @@ pub unsafe fn vfs_parse_path(path: *const u8, uio: *mut UserOp, abs_path: *mut *
 
     let cwd_len = strlen(cwd) as isize;
     let path_len = strlen(path) as isize;
-    let mut buf = kmalloc((cwd_len + path_len + 2) as usize, &M_BUFFER, 0);
+    let mut buf = Buffer::new((cwd_len + path_len + 2) as usize).leak();
 
     memcpy(buf, cwd, cwd_len as usize);
 
@@ -213,9 +211,9 @@ pub unsafe fn vfs_parse_path(path: *const u8, uio: *mut UserOp, abs_path: *mut *
     memcpy(buf.offset(cwd_len + 1), path, path_len as usize);
     *buf.offset(cwd_len + path_len + 1) = 0;
 
-    /* Tokenize slash seperated words in path into tokens */
+    /* tokenize slash seperated words in path into tokens */
     let tokens = tokenize(buf, b'/');
-    let out = kmalloc((cwd_len + path_len + 1) as usize, &M_BUFFER, 0);
+    let out = Buffer::new((cwd_len + path_len + 1) as usize).leak();
 
     let mut valid_tokens: [*mut u8; 512] = [core::ptr::null_mut(); 512];
     let mut i = 0;

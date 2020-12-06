@@ -27,6 +27,13 @@ impl Buffer {
     pub fn size(&self) -> usize {
         self.size
     }
+
+    pub fn leak(self) -> *mut u8 {
+        let ret = self.data;
+        core::mem::forget(self);
+
+        ret
+    }
 }
 
 impl Drop for Buffer {

@@ -10,7 +10,6 @@ use kern::time::*;
 use crate::{malloc_declare};
 
 malloc_declare!(M_VNODE);
-malloc_declare!(M_BUFFER);
 
 unsafe fn tmpfs_vget(super_node: *mut Vnode, ino: ino_t, vnode: *mut *mut Vnode) -> isize {
     /* vnode is always present in memory */
@@ -50,14 +49,14 @@ unsafe fn tmpfs_read(node: *mut Vnode, offset: off_t, size: size_t, buf: *mut u8
 unsafe fn tmpfs_write(node: *mut Vnode, offset: off_t, size: size_t, buf: *mut u8) -> usize {
     if (*node).size == 0 {
         let sz = offset as usize + size;
-        (*node).p = kmalloc(sz, &M_BUFFER, 0);
+        (*node).p = Buffer::new(sz).leak();
         (*node).size = sz;
     }
 
     if offset as usize + size > (*node).size {
         /* reallocate */
         let sz = offset as usize + size;
-        let new = kmalloc(sz, &M_BUFFER, 0);
+        let new = Buffer::new(sz).leak();
 
         memcpy(new, (*node).p, (*node).size);
         kfree((*node).p);
@@ -86,7 +85,7 @@ unsafe fn tmpfs_trunc(vnode: *mut Vnode, len: off_t) -> isize {
     }
 
     let sz = min!(len as usize, (*vnode).size);
-    let buf = kmalloc(len as usize, &M_BUFFER, 0);
+    let buf = Buffer::new(len as usize).leak();
 
     if buf.is_null() {
         panic!("failed to allocate buffer");

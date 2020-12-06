@@ -10,8 +10,6 @@ use crate::arch::i386::include::core::arch::X86Thread;
 use crate::arch::i386::include::cpu::cpu::{read_cr3, write_cr3};
 use crate::{malloc_declare};
 
-malloc_declare!(M_BUFFER);
-
 pub unsafe fn tlb_flush() {
     write_cr3(read_cr3());
 }
@@ -24,10 +22,10 @@ pub unsafe fn arch_sys_execve(proc: *mut Process, argc: usize, _argp: *const *co
     (*arch).eflags = X86_EFLAGS;
 
     let argp = _argp;
-    let u_argp = kmalloc(argc * core::mem::size_of::<usize>(), &M_BUFFER, 0) as *mut *mut u8;
+    let u_argp = Buffer::new(argc * core::mem::size_of::<usize>()).leak() as *mut *mut u8;
 
     let envp = _envp;
-    let u_envp = kmalloc(envc * core::mem::size_of::<usize>(), &M_BUFFER, 0) as *mut *mut u8;
+    let u_envp = Buffer::new(envc * core::mem::size_of::<usize>()).leak() as *mut *mut u8;
 
     /* start at the top of user stack */
     let mut stack: usize = USER_STACK;
