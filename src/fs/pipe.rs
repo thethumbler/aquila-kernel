@@ -43,7 +43,7 @@ unsafe fn pipefs_can_read(file: *mut FileDescriptor, size: size_t) -> isize {
 unsafe fn pipefs_can_write(file: *mut FileDescriptor, size: size_t) -> isize {
     let node = (*file).backend.vnode;
     let pipe = (*node).p as *mut Pipe;
-    return (size >= (*(*pipe).ring).size - (*(*pipe).ring).available()) as isize;
+    return (size >= (*(*pipe).ring).size() - (*(*pipe).ring).available()) as isize;
 }
 
 unsafe fn pipefs_mkpipe(pipe_ref: *mut *mut Pipe) -> isize {

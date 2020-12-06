@@ -40,9 +40,6 @@ pub macro malloc_declare {
     }
 }
 
-
-malloc_define!(M_BUFFER, "buffer\0", "generic buffer\0");
-
 pub static mut MALLOC_TYPES: Queue<*mut MallocType> = Queue::empty();
 
 #[derive(Copy, Clone)]
