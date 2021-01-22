@@ -1232,7 +1232,7 @@ unsafe fn sys_gettimeofday(tv: *mut TimeVal, tz: *mut TimeZone) {
 
 unsafe fn sys_sigmask(how: isize, set: *mut u8, oldset: *mut u8) {
     //syscall_log(LOG_DEBUG, "sigmask(how=%d, set=%p, oldset=%p)\n", how, set, oldset);
-    arch::syscall_return(curthread!(), -ENOTSUP as usize);
+    arch::syscall_return(curthread!(), -Error::ENOTSUP as usize);
 }
 
 type fd_mask = usize;
