@@ -125,13 +125,13 @@ impl Process {
 pub static mut PROCS: Queue<*mut Process> = Queue::empty();
 
 //static mut pid_bitmap: *mut BitMap = &BitMap::empty(4096) as *const _ as *mut BitMap;
-static mut PID_BITMAP: *mut BitMap = &bitmap_new!(4096) as *const _ as *mut BitMap;
+static mut PID_BITMAP: BitMap = bitmap_new!(4096);
 static mut FF_PID: isize = 1;
 
 pub unsafe fn proc_pid_alloc() -> isize {
-    for i in (FF_PID as usize)..(*PID_BITMAP).max_idx {
-        if bitmap_check(PID_BITMAP, i) == 0 {
-            bitmap_set(PID_BITMAP, i);
+    for i in (FF_PID as usize)..PID_BITMAP.max_idx {
+        if bitmap_check(&mut PID_BITMAP, i) == 0 {
+            bitmap_set(&mut PID_BITMAP, i);
             FF_PID = i as isize;
             return i as isize;
         }
@@ -141,7 +141,7 @@ pub unsafe fn proc_pid_alloc() -> isize {
 }
 
 pub unsafe fn proc_pid_free(pid: isize) {
-    bitmap_clear(PID_BITMAP, pid as usize);
+    bitmap_clear(&mut PID_BITMAP, pid as usize);
 
     if pid < FF_PID {
         FF_PID = pid;
