@@ -1,7 +1,7 @@
 extern crate alloc;
 
 pub use kern::types::*;
-pub use bits::errno::*;
+pub use bits::errno::Error::{self, *};
 
 // data structures / collections
 pub use ds::*;
