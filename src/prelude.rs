@@ -62,3 +62,8 @@ pub macro min {
         if $a > $b { $a } else { $b }
     }
 }
+
+pub trait Alloc {
+    fn alloc() -> Box<Self>;
+    fn alloc_tag() -> &'static MallocType;
+}
