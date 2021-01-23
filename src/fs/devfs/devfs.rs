@@ -1,5 +1,5 @@
 use prelude::*;
-use fs::*;
+use fs::{self, *};
 use fs::tmpfs::*;
 use mm::*;
 use kern::time::*;
@@ -9,54 +9,54 @@ use crate::{malloc_declare};
 malloc_declare!(M_VNODE);
 
 /* devfs root directory (usually mounted on '/dev') */
-pub static mut DEVFS_ROOT: *mut Vnode = core::ptr::null_mut();
+pub static mut DEVFS_ROOT: Option<Arc<Node>> = None;
 
-unsafe fn devfs_init() -> isize {
-    /* devfs is really just tmpfs */
-    DEVFS.vops = TMPFS.vops.clone();
-    DEVFS.fops = TMPFS.fops.clone();
+fn init() -> Result<(), Error> {
+    unsafe {
+        if let Some(tmpfs) = fs::get_fs_by_name("tmpfs") {
+            /* devfs is really just tmpfs */
+            let mut devfs = (*tmpfs).clone();
+            devfs.name = "devfs";
+            devfs.init = Some(init);
+            devfs.mount = Some(mount);
 
-    DEVFS_ROOT = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
-    if DEVFS_ROOT.is_null() {
-        return -ENOMEM;
+            let devfs = Arc::new(devfs);
+            let ts = gettime()?;
+
+            let mut devfs_root = Node::none();
+
+            devfs_root.set_mode(S_IFDIR | 0o775);
+            devfs_root.set_nlink(2);
+
+            devfs_root.fs     = Some(Arc::clone(&devfs));
+            devfs_root.refcnt = 1;
+
+            devfs_root.ctime = ts;
+            devfs_root.atime = ts;
+            devfs_root.mtime = ts;
+
+            DEVFS_ROOT = Some(Arc::new(devfs_root));
+
+            fs::install(devfs)
+        } else {
+            Err(Error::EINVAL)
+        }
     }
-
-    (*DEVFS_ROOT).ino    = DEVFS_ROOT as usize as ino_t;
-    (*DEVFS_ROOT).mode   = S_IFDIR | 0775;
-    (*DEVFS_ROOT).nlink  = 2;
-    (*DEVFS_ROOT).fs     = &DEVFS;
-    (*DEVFS_ROOT).refcnt = 1;
-
-    let mut ts: TimeSpec = core::mem::uninitialized();
-    gettime(&mut ts);
-
-    (*DEVFS_ROOT).ctime = ts;
-    (*DEVFS_ROOT).atime = ts;
-    (*DEVFS_ROOT).mtime = ts;
-
-    vfs_install(&mut DEVFS);
-
-    return 0;
 }
 
-unsafe fn devfs_mount(dir: *const u8, flags: isize, data: *mut u8) -> isize {
-    if DEVFS_ROOT.is_null() {
-        return -EINVAL;
-    }
+fn mount(_fs: Arc<Filesystem>, dir: &str, flags: isize, data: *mut u8) -> Result<(), Error> {
+    unsafe {
+        if DEVFS_ROOT.is_none() {
+            return Err(Error::EINVAL);
+        }
 
-    vfs_bind(dir, DEVFS_ROOT)
+        fs::bind(dir, Arc::clone(DEVFS_ROOT.as_ref().unwrap()))
+    }
 }
 
-pub static mut DEVFS: Filesystem = Filesystem {
-    name:  "devfs",
-    nodev: 1,
-
-    _init:  Some(devfs_init),
-    _mount: Some(devfs_mount),
-    _load: None,
-
-    vops: VnodeOps::empty(),
-    fops: FileOps::none(),
-};
-
-module_init!(devfs, Some(devfs_init), None);
+module_define!{
+    "devfs",
+    Some(|| { vec!["tmpfs"] }),
+    Some(init),
+    None
+}

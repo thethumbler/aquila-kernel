@@ -1,5 +1,5 @@
 use prelude::*;
-use fs::*;
+use fs::{self, *};
 use sys::process::*;
 use mm::*;
 
@@ -209,14 +209,21 @@ pub struct Elf32Dynamic {
     pub d_val : Elf32Addr,
 }
 
-unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
+unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Node) -> isize {
     let mut err = 0;
 
     let vm_space = &mut (*proc).vm_space;
     let hdr: Elf32Header = core::mem::uninitialized();
 
-    if vfs_read(vnode, 0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8) as usize != core::mem::size_of_val(&hdr) {
-        return -EINVAL;
+    match (*vnode).read(0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8) {
+        Ok(val) => {
+            if val != core::mem::size_of_val(&hdr) {
+                return -EINVAL;
+            }
+        },
+        Err(err) => {
+            return err.unwrap();
+        }
     }
 
     let mut proc_heap = 0;
@@ -225,8 +232,15 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
     for i in 0..hdr.e_phnum {
         let mut phdr: Elf32ProgramHeader = core::mem::uninitialized();
         
-        if vfs_read(vnode, offset as isize, core::mem::size_of_val(&phdr), &phdr as *const _ as *mut u8) as usize != core::mem::size_of_val(&phdr) {
-            return -EINVAL;
+        match (*vnode).read(offset as usize, core::mem::size_of_val(&phdr), &phdr as *const _ as *mut u8) {
+            Ok(val) => {
+                if val != core::mem::size_of_val(&phdr) {
+                    return -EINVAL;
+                }
+            },
+            Err(err) => {
+                return err.unwrap();
+            }
         }
 
         if phdr.p_type as usize == PT_LOAD {
@@ -316,9 +330,10 @@ unsafe fn binfmt_elf32_load(proc: *mut Process, vnode: *mut Vnode) -> isize {
     return err;
 }
 
-pub unsafe fn binfmt_elf_check(vnode: *mut Vnode) -> isize {
+pub unsafe fn binfmt_elf_check(vnode: *mut Node) -> isize {
+    //print!("binfmt::elf::check(node={:?})\n", vnode);
     let mut hdr: Elf32Header = core::mem::uninitialized();
-    vfs_read(vnode, 0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8);
+    (*vnode).read(0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8);
 
     /* Check header */
     if hdr.e_ident[EI_MAG0] == ELFMAG0 &&
@@ -331,13 +346,21 @@ pub unsafe fn binfmt_elf_check(vnode: *mut Vnode) -> isize {
     return -ENOEXEC;
 }
 
-pub unsafe fn binfmt_elf_load(proc: *mut Process, _path: *const u8, vnode: *mut Vnode) -> isize {
+pub unsafe fn binfmt_elf_load(proc: *mut Process, _path: *const u8, vnode: *mut Node) -> isize {
+    //print!("binfmt::elf::load(proc={:?}, path={}, node={:?})\n", proc, cstr(_path), vnode);
     let mut err = 0;
 
     let mut hdr: Elf32Header = core::mem::uninitialized();
 
-    if vfs_read(vnode, 0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8) as usize != core::mem::size_of_val(&hdr) {
-        return -EINVAL;
+    match (*vnode).read(0, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8) {
+        Ok(val) => {
+            if val != core::mem::size_of_val(&hdr) {
+                return -EINVAL;
+            }
+        },
+        Err(err) => {
+            return err.unwrap();
+        }
     }
 
     match hdr.e_ident[EI_CLASS] {

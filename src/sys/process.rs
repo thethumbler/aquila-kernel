@@ -10,6 +10,7 @@ use sys::sched::*;
 use sys::session::*;
 use sys::signal::*;
 use sys::thread::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 
 malloc_define!(M_PROC, "proc\0", "process structure\0");
 malloc_define!(M_FDS, "fds\0", "file descriptor array\0"); /* FIXME */
@@ -33,7 +34,7 @@ pub struct Process {
     pub parent: *mut Process,
 
     /** current working directory */
-    pub cwd: *mut u8, //char *cwd;
+    pub cwd: String,
 
     /** file mode creation mask */
     pub mask: mode_t,
@@ -90,12 +91,12 @@ pub macro proc_exit {
 pub macro proc_uio {
     ($proc:expr) => {
         UserOp {
-            cwd:  (*$proc).cwd,
+            cwd:  &(*$proc).cwd,
             uid:  (*$proc).uid,
             gid:  (*$proc).gid,
             mask: (*$proc).mask,
             flags: 0,
-            root: core::ptr::null_mut(),
+            root: &"",
         }
     }
 }
@@ -301,7 +302,6 @@ pub unsafe extern "C" fn proc_kill(proc: *mut Process) {
 
     /* Free kernel-space resources */
     kfree((*proc).fds as *mut u8);
-    kfree((*proc).cwd as *mut u8);
 
     while (*proc).sig_queue.as_ref().unwrap().count() > 0 {
         (*proc).sig_queue.as_mut().unwrap().dequeue();
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn proc_reap(proc: *mut Process) -> isize {
 pub unsafe extern "C" fn proc_fd_get(proc: *mut Process) -> isize {
     for i in 0..FDS_COUNT {
         if (*(*proc).fds.offset(i as isize)).backend.vnode.is_null() {
-            (*(*proc).fds.offset(i as isize)).backend.vnode = (-1isize as usize) as *mut Vnode;
+            (*(*proc).fds.offset(i as isize)).backend.vnode = (-1isize as usize) as *mut Node;
             return i as isize;
         }
     }

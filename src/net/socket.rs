@@ -1,5 +1,6 @@
 use prelude::*;
 use fs::*;
+use sys::syscall::file::FileDescriptor;
 
 pub type socklen_t = u32;
 pub type sa_family_t = u32;

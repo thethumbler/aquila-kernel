@@ -1,70 +1,28 @@
 use prelude::*;
 
-use fs::*;
+use fs::{self, *};
 use mm::*;
 
 use kern::print::cstr;
 use crate::{print, malloc_define};
 
-pub static mut MOUNTS: Queue<*mut Mountpoint> = Queue::empty();
-
 malloc_define!(M_MOUNTPOINT, "mountpoint\0", "mount point structure\0");
 
-pub unsafe fn vfs_mount(fs_type: *const u8, dir: *const u8, flags: isize, data: *mut u8, uio: *mut UserOp) -> isize {
-    let mut fs: *mut Filesystem = core::ptr::null_mut();
-
-    /* look up filesystem */
-    let mut entry = REGISTERED_FS;
-    while !entry.is_null() {
-        if (*entry).name == cstr(fs_type) {
-            fs = (*entry).fs;
-            break;
+pub fn mount(fs_type: &str, dir: &str, flags: isize, data: *mut u8, uio: &UserOp) -> Result<(), Error> {
+    unsafe {
+        match REGISTERED_FS.iter().find(|fs| fs.name == fs_type) {
+            None => Err(Error::EINVAL),
+            Some(fs) => {
+                let realpath = fs::realpath(dir, uio)?;
+                fs.mount(Arc::clone(fs), &realpath, flags, data)
+            }
         }
-
-        entry = (*entry).next;
     }
+}
 
-    if fs.is_null() {
-        return -EINVAL;
+pub fn get_fs_by_name(name: &str) -> Option<Arc<Filesystem>> {
+    unsafe {
+        REGISTERED_FS.iter().find(|fs| fs.name == name)
+            .map(|fs| Arc::clone(fs))
     }
-
-    /* directory path must be absolute */
-    let mut err = 0;
-    let mut _dir = core::ptr::null_mut();
-
-    err = vfs_parse_path(dir, uio, &mut _dir);
-    if err != 0 {
-        if !_dir.is_null() {
-            kfree(_dir);
-        }
-
-        return err;
-    }
-
-    err = (*fs).mount(_dir, flags, data);
-    
-    if err == 0 {
-        let mut mp = kmalloc(core::mem::size_of::<Mountpoint>(), &M_MOUNTPOINT, 0) as *mut Mountpoint;
-
-        if mp.is_null() {
-            /* TODO */
-        }
-
-        struct S {
-            dev: *mut u8,
-            opt: *mut u8,
-        };
-
-        let args = data as *mut S;
-
-        (*mp).dev = if !(*args).dev.is_null() { strdup((*args).dev) } else { b"none\0".as_ptr() as *mut u8 };
-        (*mp).fs_type = strdup(fs_type);
-        (*mp).path = strdup(_dir);
-        (*mp).options = b"\0".as_ptr() as *mut u8;
-
-        MOUNTS.enqueue(mp);
-    }
-
-    kfree(_dir);
-    return err;
 }

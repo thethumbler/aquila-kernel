@@ -33,14 +33,15 @@ unsafe extern "C" fn rd_write(_dd: *mut DeviceDescriptor, offset: isize, size: u
 }
 */
 
-unsafe fn rd_probe() -> isize {
-    let rd_module = (*__kboot).modules.offset(0);
-    RD_ADDR = (*rd_module).addr;
-    RD_SIZE = (*rd_module).size;
+fn init() -> Result<(), Error> {
+    unsafe {
+        let rd_module = (*__kboot).modules.offset(0);
+        RD_ADDR = (*rd_module).addr;
+        RD_SIZE = (*rd_module).size;
 
-    kdev_blkdev_register(1, &mut RDDEV);
-
-    return 0;
+        kdev_blkdev_register(1, &mut RDDEV);
+        Ok(())
+    }
 }
 
 unsafe fn rd_getbs(_dd: *mut DeviceDescriptor) -> usize {
@@ -49,7 +50,7 @@ unsafe fn rd_getbs(_dd: *mut DeviceDescriptor) -> usize {
 
 static mut RDDEV: Device = Device {
     name:  "ramdisk",
-    probe: Some(rd_probe),
+    //probe: Some(init),
     read:  Some(rd_read),
     //write: Some(rd_write),
     getbs: Some(rd_getbs),
@@ -57,4 +58,9 @@ static mut RDDEV: Device = Device {
     ..Device::none()
 };
 
-module_init!(rd, Some(rd_probe), None);
+module_define!{
+    "rd",
+    None,
+    Some(init),
+    None
+}

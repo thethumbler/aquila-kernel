@@ -4,6 +4,7 @@ use mm::*;
 
 use bits::dirent::DirectoryEntry;
 use bits::fcntl::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 
 use crate::kern::print::cstr;
 
@@ -14,12 +15,17 @@ malloc_define!(M_VFS_PATH, b"vfs-path\0", b"vfs path structure\0");
 malloc_define!(M_VFS_NODE, b"vfs-node\0", b"vfs node structure\0");
 malloc_define!(M_FS_LIST, b"fs-list\0", b"filesystems list\0");
 
-pub struct UserOp {
+/** list of registered filesystems */
+pub static mut REGISTERED_FS: Vec<Arc<Filesystem>> = Vec::new();
+static mut VFSBIND: Vec<(String, Arc<Node>)> = Vec::new();
+
+#[derive(Debug)]
+pub struct UserOp<'a> {
     /* root directory */
-    pub root:   *mut u8,
+    pub root:   &'a str,
 
     /* current working directory */
-    pub cwd:    *mut u8,
+    pub cwd:    &'a str,
 
     pub uid:    uid_t,
     pub gid:    gid_t,
@@ -27,114 +33,219 @@ pub struct UserOp {
     pub flags:  usize,
 }
 
-#[derive(Clone)]
-pub struct VnodeOps {
-    pub _read:    Option<unsafe fn(vnode: *mut Vnode, offset: off_t, size: usize, buf: *mut u8) -> usize>,
-    pub _write:   Option<unsafe fn(vnode: *mut Vnode, offset: off_t, size: usize, buf: *mut u8) -> usize>,
-    pub _ioctl:   Option<unsafe fn(vnode: *mut Vnode, request: isize, argp: *mut u8) -> isize>,
-    pub _close:   Option<unsafe fn(vnode: *mut Vnode) -> isize>,
-    pub _trunc:   Option<unsafe fn(vnode: *mut Vnode, len: off_t) -> isize>,
-    pub _chmod:   Option<unsafe fn(vnode: *mut Vnode, mode: mode_t) -> isize>,
-    pub _chown:   Option<unsafe fn(vnode: *mut Vnode, owner: uid_t, group: gid_t) -> isize>,
-
-    pub _readdir: Option<unsafe fn(dir: *mut Vnode, offset: off_t, dirent: *mut DirectoryEntry) -> usize>,
-    pub _finddir: Option<unsafe fn(dir: *mut Vnode, name: *const u8, dirent: *mut DirectoryEntry) -> isize>,
-
-    pub _vmknod:  Option<unsafe fn(dir: *mut Vnode, filename: *const u8, mode: mode_t, dev: dev_t, uio: *mut UserOp, vnode_ref: *mut *mut Vnode) -> isize>,
-    pub _vunlink: Option<unsafe fn(dir: *mut Vnode, filename: *const u8, uio: *mut UserOp) -> isize>,
-
-    pub _vget:    Option<unsafe fn(super_node: *mut Vnode, ino: ino_t, vnode_ref: *mut *mut Vnode) -> isize>,
-
-    pub _vsync:   Option<unsafe fn(vnode: *mut Vnode, mode: isize) -> isize>,
-    pub _sync:    Option<unsafe fn(super_node: *mut Vnode, mode: isize) -> isize>,
-
-    pub _map:     Option<unsafe fn(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize>,
-}
-
-impl VnodeOps {
-    pub const fn empty() -> VnodeOps {
-        VnodeOps {
-            _read: None,
-            _write: None,
-            _ioctl: None,
-            _close: None,
-            _trunc: None,
-            _chmod: None,
-            _chown: None,
-            _readdir: None,
-            _finddir: None,
-            _vmknod: None,
-            _vunlink: None,
-            _vget: None,
-            _vsync: None,
-            _sync: None,
-            _map: None,
+impl Default for UserOp<'_> {
+    fn default() -> Self {
+        UserOp {
+            root: "/",
+            cwd:  "/",
+            uid: 0,
+            gid: 0,
+            mask: 0,
+            flags: 0,
         }
     }
 }
 
-// FIXME
-pub struct VfsPath {
-    pub root: *mut Vnode,
-    pub tokens: *mut *mut u8,
+#[derive(Clone)]
+pub struct NodeOps {
+    pub read:    Option<fn(node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error>>,
+    pub write:   Option<fn(node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error>>,
+    pub ioctl:   Option<fn(node: &Node, request: usize, argp: *mut u8) -> Result<usize, Error>>,
+    pub close:   Option<fn(node: &Node) -> Result<usize, Error>>,
+    pub trunc:   Option<fn(node: &Node, len: usize) -> Result<usize, Error>>,
+    pub chmod:   Option<fn(node: &Node, mode: mode_t) -> Result<mode_t, Error>>,
+    pub chown:   Option<fn(node: &Node, owner: uid_t, group: gid_t) -> Result<(uid_t, gid_t), Error>>,
+
+    pub readdir: Option<fn(dir: &Node, offset: usize) -> Result<(usize, DirectoryEntry), Error>>,
+    pub finddir: Option<fn(dir: &Node, name: &str) -> Result<DirectoryEntry, Error>>,
+
+    pub mknod:   Option<fn(dir: &Node, filename: &str, mode: mode_t, dev: dev_t, uio: &UserOp) -> Result<Arc<Node>, Error>>,
+    pub unlink:  Option<fn(dir: &Node, filename: &str, uio: &UserOp) -> Result<(), Error>>,
+
+    pub iget:    Option<fn(superblock: &Node, ino: ino_t) -> Result<&'static Node, Error>>,
+    pub iput:    Option<fn(superblock: &Node, node: &mut Node) -> Result<(), Error>>,
+
+    pub vsync:   Option<unsafe fn(vnode: *mut Node, mode: isize) -> isize>,
+    pub sync:    Option<unsafe fn(super_node: *mut Node, mode: isize) -> isize>,
+
+    pub map:     Option<unsafe fn(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize>,
+}
+
+impl NodeOps {
+    pub const fn none() -> NodeOps {
+        NodeOps {
+            read:    None,
+            write:   None,
+            ioctl:   None,
+            close:   None,
+            trunc:   None,
+            chmod:   None,
+            chown:   None,
+            readdir: None,
+            finddir: None,
+            mknod:   None,
+            unlink:  None,
+            iget:    None,
+            iput:    None,
+            vsync:   None,
+            sync:    None,
+            map:     None,
+        }
+    }
+}
+
+pub struct Path<'a> {
+    pub node: &'a Node, // FIXME
+    pub path: &'a str,
 }
 
 /** filesystem structure */
+#[derive(Clone)]
 pub struct Filesystem {
     pub name: &'static str,
 
-    pub _init:  Option<unsafe fn() -> isize>,
-    pub _load:  Option<unsafe fn(dev: *mut Vnode, super_node: *mut *mut Vnode) -> isize>,
-    pub _mount: Option<unsafe fn(dir: *const u8, flags: isize, data: *mut u8) -> isize>,
+    pub init:    Option<fn() -> Result<(), Error>>,
+    pub load:    Option<fn(dev: Arc<Node>) -> Result<Arc<Node>, Error>>,
+    pub mount:   Option<fn(fs: Arc<Filesystem>, dir: &str, flags: isize, data: *mut u8) -> Result<(), Error>>,
 
-    pub vops: VnodeOps,
+    pub(in fs) read:    Option<fn(node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error>>,
+    pub(in fs) write:   Option<fn(node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error>>,
+    pub(in fs) ioctl:   Option<fn(node: &Node, request: usize, argp: *mut u8) -> Result<usize, Error>>,
+    pub(in fs) close:   Option<fn(node: &Node) -> Result<usize, Error>>,
+    pub(in fs) trunc:   Option<fn(node: &Node, len: usize) -> Result<usize, Error>>,
+    pub(in fs) chmod:   Option<fn(node: &Node, mode: mode_t) -> Result<mode_t, Error>>,
+    pub(in fs) chown:   Option<fn(node: &Node, owner: uid_t, group: gid_t) -> Result<(uid_t, gid_t), Error>>,
+
+    pub readdir: Option<fn(dir: &Node, offset: usize) -> Result<(usize, DirectoryEntry), Error>>,
+    pub finddir: Option<fn(dir: &Node, name: &str) -> Result<DirectoryEntry, Error>>,
+
+    pub(in fs) mknod:   Option<fn(dir: &Node, filename: &str, mode: mode_t, dev: dev_t, uio: &UserOp) -> Result<Arc<Node>, Error>>,
+    pub(in fs) unlink:  Option<fn(dir: &Node, filename: &str, uio: &UserOp) -> Result<(), Error>>,
+
+    pub iget:    Option<fn(superblock: &mut Node, ino: ino_t) -> Result<&'static mut Node, Error>>,
+    pub iput:    Option<fn(superblock: &mut Node, node: &mut Node) -> Result<(), Error>>,
+
+    pub vsync:   Option<unsafe fn(vnode: *mut Node, mode: isize) -> isize>,
+    pub sync:    Option<unsafe fn(super_node: *mut Node, mode: isize) -> isize>,
+
+    pub map:     Option<unsafe fn(vm_space: *mut VmSpace, vm_entry: *mut VmEntry) -> isize>,
+    
     pub fops: FileOps,
 
     /* flags */
     pub nodev: isize,
 }
 
-unsafe impl Sync for Filesystem {}
-
 impl Filesystem {
-    pub fn init(&self) -> isize {
-        unsafe {
-            match self._init {
-                Some(f) => f(),
-                None => -ENOSYS
-            }
-        }
-    }
-
-    pub fn load(&self, dev: *mut Vnode, super_node: *mut *mut Vnode) -> isize {
-        unsafe {
-            match self._load {
-                Some(f) => f(dev, super_node),
-                None => -ENOSYS
-            }
-        }
-    }
-
-    pub fn mount(&self, dir: *const u8, flags: isize, data: *mut u8) -> isize {
-        unsafe {
-            match self._mount {
-                Some(f) => f(dir, flags, data),
-                None => -ENOSYS
-            }
+    pub const fn none() -> Filesystem {
+        Filesystem {
+            name:    "",
+            init:    None,
+            load:    None,
+            mount:   None,
+            read:    None,
+            write:   None,
+            ioctl:   None,
+            close:   None,
+            trunc:   None,
+            chmod:   None,
+            chown:   None,
+            readdir: None,
+            finddir: None,
+            mknod:   None,
+            unlink:  None,
+            iget:    None,
+            iput:    None,
+            vsync:   None,
+            sync:    None,
+            map:     None,
+            fops:  FileOps::none(),
+            nodev: 0,
         }
     }
 }
 
-/* list of registered filesystems */
-pub struct FilesystemList {
-    /** filesystem name */
-    pub name: &'static str,
+unsafe impl Sync for Filesystem {}
 
-    /** filesystem structure */
-    pub fs: *mut Filesystem,
+impl Filesystem {
+    // Filesystem operations
+    pub fn init(&self) -> Result<(), Error> {
+        match self.init {
+            Some(f) => f(),
+            None => Err(Error::ENOSYS)
+        }
+    }
 
-    /** next entry in the list */
-    pub next: *mut FilesystemList,
+    pub fn load(&self, dev: Arc<Node>) -> Result<Arc<Node>, Error> {
+        match self.load {
+            Some(f) => f(dev),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn mount(&self, _fs: Arc<Filesystem>, dir: &str, flags: isize, data: *mut u8) -> Result<(), Error> {
+        match self.mount {
+            Some(f) => f(_fs, dir, flags, data),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    // Node operations
+    pub fn read(&self, node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error> {
+        match self.read {
+            Some(f) => f(node, offset, size, buffer),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn write(&self, node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error> {
+        match self.write {
+            Some(f) => f(node, offset, size, buffer),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn readdir(&self, node: &Node, offset: usize) -> Result<(usize, DirectoryEntry), Error> {
+        match self.readdir {
+            Some(f) => f(node, offset),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn finddir(&self, node: &Node, name: &str) -> Result<DirectoryEntry, Error> {
+        match self.finddir {
+            Some(f) => f(node, name),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn ioctl(&self, node: &Node, request: usize, argp: *mut u8) -> Result<usize, Error> {
+        match self.ioctl {
+            Some(f) => f(node, request, argp),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn trunc(&self, node: &Node, len: usize) -> Result<usize, Error> {
+        match self.trunc {
+            Some(f) => f(node, len),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn chmod(&self, node: &Node, mode: mode_t) -> Result<mode_t, Error> {
+        match self.chmod {
+            Some(f) => f(node, mode),
+            None => Err(Error::ENOSYS)
+        }
+    }
+
+    pub fn chown(&self, node: &Node, uid: uid_t, gid: gid_t) -> Result<(uid_t, gid_t), Error> {
+        match self.chown {
+            Some(f) => f(node, uid, gid),
+            None => Err(Error::ENOSYS)
+        }
+    }
 }
 
 pub unsafe fn __vfs_can_always(_f: *mut FileDescriptor, _s: usize) -> isize { 1 }
@@ -142,302 +253,64 @@ pub unsafe fn __vfs_can_never (_f: *mut FileDescriptor, _s: usize) -> isize { 0 
 pub unsafe fn __vfs_eof_always(_f: *mut FileDescriptor) -> isize { 1 }
 pub unsafe fn __vfs_eof_never (_f: *mut FileDescriptor) -> isize { 0 }
 
-/* XXX */
-pub struct Mountpoint {
-    pub dev: *mut u8,
-    pub path: *mut u8,
-    pub fs_type: *mut u8,
-    pub options: *mut u8,
-}
-
-/** list of registered filesystems */
-pub static mut REGISTERED_FS: *mut FilesystemList = core::ptr::null_mut();
-
-/* vfs mountpoints graph */
-pub struct VfsNode {
-    pub name: &'static str,
-    pub children: *mut VfsNode,
-    pub next: *mut VfsNode,
-
-    /* reference to node */
-    pub vnode: *mut Vnode,
-}
-
-pub static mut VFS_GRAPH: VfsNode = VfsNode {
-    name: "/",
-    children: core::ptr::null_mut(),
-    next: core::ptr::null_mut(),
-
-    vnode: core::ptr::null_mut(),
-};
-
-/* ================== VFS Graph helpers ================== */
-
-pub static mut VFS_ROOT: *mut Vnode = core::ptr::null_mut();
-
-pub unsafe fn vfs_mount_root(vnode: *mut Vnode) -> isize {
-    /* TODO Flush mountpoints */
-    VFS_ROOT = vnode;
-    VFS_GRAPH.vnode = vnode;
-    VFS_GRAPH.children = core::ptr::null_mut();  /* XXX */
-
-    return 0;
-}
-
-pub unsafe fn tokenize_path(path: *const u8) -> *mut *mut u8 {
-    /* Tokenize slash seperated words in path into tokens */
-    tokenize(path, b'/')
-}
-
-pub unsafe fn vfs_parse_path(path: *const u8, uio: *mut UserOp, abs_path: *mut *mut u8) -> isize {
-    if path.is_null() || *path == 0 {
-        return -ENOENT;
-    }
-
-    let mut cwd = (*uio).cwd;
-
-    if *path == b'/' {
-        /* absolute path */
-        cwd = b"/\0".as_ptr() as *mut u8;
-    }
-
-    let cwd_len = strlen(cwd) as isize;
-    let path_len = strlen(path) as isize;
-    let mut buf = Buffer::new((cwd_len + path_len + 2) as usize).leak();
-
-    memcpy(buf, cwd, cwd_len as usize);
-
-    *buf.offset(cwd_len) = b'/';
-    memcpy(buf.offset(cwd_len + 1), path, path_len as usize);
-    *buf.offset(cwd_len + path_len + 1) = 0;
-
-    /* tokenize slash seperated words in path into tokens */
-    let tokens = tokenize(buf, b'/');
-    let out = Buffer::new((cwd_len + path_len + 1) as usize).leak();
-
-    let mut valid_tokens: [*mut u8; 512] = [core::ptr::null_mut(); 512];
-    let mut i = 0;
-
-    let mut token_p = tokens;
-
-    while !(*token_p).is_null() {
-        let token = *token_p;
-
-        if *token.offset(0) == b'.' {
-            if *token.offset(1) == b'\0' {
-                token_p = token_p.offset(1);
-                continue;
-            }
-
-            if *token.offset(1) == b'.' {
-                if *token.offset(2) == b'\0' {
-                    if i > 0 {
-                        i -= 1;
-                        valid_tokens[i] = core::ptr::null_mut();
-                    }
-
-                    token_p = token_p.offset(1);
-                    continue;
-                }
-            }
-
-        }
-
-        if *token != 0 {
-            valid_tokens[i] = token;
-            i += 1;
-        }
-
-        token_p = token_p.offset(1);
-    }
-
-    valid_tokens[i] = core::ptr::null_mut();
-
-    *out.offset(0) = b'/';
-
-    let mut j = 1;
-    let mut token_p = &valid_tokens as *const _ as *mut *mut u8;
-
-    while !(*token_p).is_null() {
-        let token = *token_p;
-        let len = strlen(token);
-
-        memcpy(out.offset(j), token, len);
-        j += len as isize;
-        
-        *out.offset(j as isize) = b'/';
-        j += 1;
-
-        token_p = token_p.offset(1);
-    }
-
-    *out.offset(if j > 1 { j -= 1; j } else { 1 }) = 0;
-
-    free_tokens(tokens);
-    kfree(buf);
-
-    if !abs_path.is_null() {
-        *abs_path = out;
+pub fn realpath(path: &str, uio: &UserOp) -> Result<String, Error> {
+    let fullpath = if path.starts_with('/') {
+        path.to_owned()
     } else {
-        kfree(out);
-    }
+        uio.cwd.to_owned() + "/" + path
+    };
 
-    return 0;
+    let mut result = Vec::new();
+
+    fullpath
+        .split('/')
+        .for_each(|s| {
+            match s {
+                "" => {},
+                "." => {},
+                ".." => { result.pop(); },
+                _ => result.push(s),
+            }
+        });
+
+    Ok("/".to_owned() + &result.join("/"))
 }
 
-pub unsafe fn vfs_get_mountpoint(tokens: *mut *mut u8) -> *mut VfsPath {
-    let mut path = kmalloc(core::mem::size_of::<VfsPath>(), &M_VFS_PATH, 0) as *mut VfsPath;
-    (*path).tokens = tokens;
-
-    let mut cur_node = &VFS_GRAPH as *const _ as *mut VfsNode;
-    let mut last_target_node = cur_node;
-
-    let mut token_i = 0;
-    let mut check_last_node = false;
-
-    let mut token_p = tokens;
-    while !(*token_p).is_null() {
-        let token = *token_p;
-
-        check_last_node = false;
-
-        if !(*cur_node).vnode.is_null() {
-            last_target_node = cur_node;
-            (*path).tokens = tokens.offset(token_i);
-        }
-
-        if !(*cur_node).children.is_null() {
-            cur_node = (*cur_node).children;
-
-            let mut m_node = cur_node; 
-            while !m_node.is_null() {
-                if cstr(token) == (*m_node).name {
-                    cur_node = m_node;
-                    check_last_node = true;
-                    break;
-                }
-
-                m_node = (*m_node).next;
-            }
-
-            if !check_last_node {
-                /* not found, break! */
-                break;
-            }
+pub fn mountpoint(path: &str) -> Result<Path, Error> {
+    unsafe {
+        if let Some((root, node)) = VFSBIND.iter().find(|s| path.starts_with(&s.0)) {
+            Ok(Path {
+                node: &**node,
+                path: &path[root.len()..],
+            })
         } else {
-            /* no children, break! */
-            break;
+            // FIXME
+            Err(Error::EINVAL)
         }
-
-        token_i += 1;
-        token_p = token_p.offset(1);
     }
-
-    if check_last_node && !(*cur_node).vnode.is_null() {
-        last_target_node = cur_node;
-        (*path).tokens = tokens.offset(token_i);
-    }
-
-    (*path).root = (*last_target_node).vnode;
-
-    return path;
 }
 
-pub unsafe fn vfs_bind(path: *const u8, target: *mut Vnode) -> isize {
-    /* if path is NULL pointer, or path is empty string, or no target return EINVAL */
-    if path.is_null() || *path == 0 || target.is_null() {
-        return -EINVAL;
+pub fn bind(path: &str, target: Arc<Node>) -> Result<(), Error> {
+    unsafe {
+        // TODO check for existence
+
+        VFSBIND.push((path.to_owned(), target));
+        VFSBIND.sort_by(|(path1, _), (path2, _)| path2.cmp(path1));
+        
+        Ok(())
     }
-
-    if strcmp(path, b"/\0".as_ptr()) == 0 {
-        vfs_mount_root(target);
-        return 0;
-    }
-
-    /* canonicalize path */
-    let tokens = tokenize_path(path);
-    
-    /* FIXME: should check for existence */
-
-    let mut cur_node = &VFS_GRAPH as *const _ as *mut VfsNode;
-
-    let mut token_p = tokens; 
-    while !(*token_p).is_null() {
-        let token = *token_p;
-
-        if !(*cur_node).children.is_null() {
-            cur_node = (*cur_node).children;
-
-            /* look for token in node children */
-            let mut last_node = core::ptr::null_mut() as *mut VfsNode;
-            let mut node = cur_node; 
-            let mut goto_next = false;
-
-            while !node.is_null() {
-                last_node = node;
-                if (*node).name == cstr(token) {
-                    /* found */
-                    cur_node = node;
-                    goto_next = true;
-                    break;
-                }
-
-                node = (*node).next;
-            }
-
-            if !goto_next {
-                /* not found, create it */
-                let mut new_node = kmalloc(core::mem::size_of::<VfsNode>(), &M_VFS_NODE, M_ZERO) as *mut VfsNode;
-                if new_node.is_null() {
-                    /* TODO */
-                }
-
-                (*new_node).name = cstr(strdup(token));
-                (*last_node).next = new_node;
-                cur_node = new_node;
-            }
-        } else {
-            let mut new_node = kmalloc(core::mem::size_of::<VfsNode>(), &M_VFS_NODE, M_ZERO) as *mut VfsNode;
-            if new_node.is_null() {
-                /* TODO */
-            }
-
-            (*new_node).name = cstr(strdup(token));
-            (*cur_node).children = new_node;
-            cur_node = new_node;
-        }
-
-        token_p = token_p.offset(1);
-    }
-
-    (*cur_node).vnode = target;
-    return 0;
 }
 
 pub unsafe fn vfs_init() {
     //vfs_log(LOG_INFO, "initializing\n");
 }
 
-/*
- * \ingroup vfs
- * \brief register a new filesystem handler
- */
-pub unsafe fn vfs_install(fs: *mut Filesystem) -> isize {
-    let node = kmalloc(core::mem::size_of::<FilesystemList>(), &M_FS_LIST, 0) as *mut FilesystemList;
-    if node.is_null() {
-        return -ENOMEM;
+pub fn install(fs: Arc<Filesystem>) -> Result<(), Error> {
+    unsafe {
+        print!("vfs: registered filesystem {}\n", fs.name);
+        REGISTERED_FS.push(fs);
+        Ok(())
     }
-
-    (*node).name = (*fs).name;
-    (*node).fs   = fs;
-
-    (*node).next = REGISTERED_FS;
-    REGISTERED_FS = node;
-
-    //vfs_log(LOG_INFO, "registered filesystem %s\n", fs->name);
-    print!("vfs: registered filesystem {}\n", (*fs).name);
-
-    return 0;
 }
 
 /* ================== VFS high level mappings ================== */
@@ -451,9 +324,9 @@ pub unsafe fn vfs_perms_check(file: *mut FileDescriptor, uio: *mut UserOp) -> is
     let mut write_perms = false;
     let mut exec_perms = false;
 
-    let mode = (*(*file).backend.vnode).mode;
-    let uid  = (*(*file).backend.vnode).uid;
-    let gid  = (*(*file).backend.vnode).gid;
+    let mode = (*(*file).backend.vnode).mode();
+    let uid  = (*(*file).backend.vnode).uid();
+    let gid  = (*(*file).backend.vnode).gid();
 
     /* read permissions */
     read_perms = if (*file).flags & O_ACCMODE == O_RDONLY && (*file).flags & O_ACCMODE != O_WRONLY {

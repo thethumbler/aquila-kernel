@@ -1,14 +1,14 @@
 use prelude::*;
 
 use mm::*;
-use fs::*;
+use fs::{self, *};
 use fs::initramfs::*;
 use sys::process::*;
 use sys::sched::*;
 use sys::binfmt::*;
 use sys::thread::*;
 use dev::kdev::*;
-use kern::module::*;
+use kern::module;
 use boot::*;
 
 use arch::sys::proc::arch_proc_init;
@@ -29,14 +29,11 @@ pub unsafe fn kmain(boot: *const BootInfo) {
 
     kdev_init();
     vfs_init();
-    modules_init();
+    module::init();
 
     if (*boot).modules_count != 0 {
-        let err = load_ramdisk((*boot).modules as *mut u8);
-
-        if err != 0 {
-            print!("err = {}\n", -err);
-            panic!("failed to load ramdisk");
+        if let Err(err) = load_ramdisk((*boot).modules as *mut u8) {
+            panic!("failed to load ramdisk: {:?}", err);
         }
     } else {
         panic!("no modules loaded: unable to load ramdisk");

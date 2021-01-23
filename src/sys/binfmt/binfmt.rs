@@ -1,5 +1,5 @@
 use prelude::*;
-use fs::*;
+use fs::{self, *};
 
 use sys::process::*;
 use sys::binfmt::elf::*;
@@ -8,8 +8,8 @@ use mm::*;
 
 /** binary format */
 pub struct BinaryFormat {
-    pub check: Option<unsafe fn(vnode: *mut Vnode) -> isize>,
-    pub load:  Option<unsafe fn(proc: *mut Process, path: *const u8, vnode: *mut Vnode) -> isize>,
+    pub check: Option<unsafe fn(vnode: *mut Node) -> isize>,
+    pub load:  Option<unsafe fn(proc: *mut Process, path: *const u8, vnode: *mut Node) -> isize>,
 }
 
 /* XXX */
@@ -23,7 +23,7 @@ static BINFMT_LIST: [BinaryFormat; NR_BINFMT] = [
     BinaryFormat { check: Some(binfmt_elf_check), load: Some(binfmt_elf_load) },
 ];
 
-unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode, binfmt: *const BinaryFormat, proc_ref: *mut *mut Process) -> isize {
+unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Node, binfmt: *const BinaryFormat, proc_ref: *mut *mut Process) -> isize {
     let mut err = 0;
 
     (*proc).vm_space.destroy();
@@ -74,27 +74,26 @@ unsafe fn binfmt_fmt_load(proc: *mut Process, path: *const u8, vnode: *mut Vnode
 pub unsafe fn binfmt_load(proc: *mut Process, path: *const u8, proc_ref: *mut *mut Process) -> isize {
     let mut err = 0;
 
-    let mut uio: UserOp = core::mem::zeroed();
+    let mut uio: UserOp = UserOp::default();
     //memset(&uio, 0, core::mem::size_of::(struct uio));
 
     if !proc.is_null() {
         uio = proc_uio!(proc);
     }
 
-    let mut vnode = core::ptr::null_mut();
-    err = vfs_lookup(path, &mut uio, &mut vnode, core::ptr::null_mut());
-    if err != 0 {
-        return err;
-    }
+    match fs::lookup(&cstr(path), &uio) {
+        Err(err) => err.unwrap(),
+        Ok((node, _)) => {
+            for i in 0..NR_BINFMT {
+                if BINFMT_LIST[i].check.unwrap()(&mut *node) == 0 {
+                    binfmt_fmt_load(proc, path, &mut *node, &BINFMT_LIST[i], proc_ref);
+                    //vfs_close(vnode);
+                    return 0;
+                }
+            }
 
-    for i in 0..NR_BINFMT {
-        if BINFMT_LIST[i].check.unwrap()(vnode) == 0 {
-            binfmt_fmt_load(proc, path, vnode, &BINFMT_LIST[i], proc_ref);
             //vfs_close(vnode);
-            return 0;
+            return -ENOEXEC;
         }
     }
-
-    //vfs_close(vnode);
-    return -ENOEXEC;
 }

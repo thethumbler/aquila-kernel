@@ -1,6 +1,7 @@
 use prelude::*;
 use fs::*;
 use mm::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 
 /* device descriptor */
 pub struct DeviceDescriptor {
@@ -31,15 +32,15 @@ pub struct Device {
 impl Device {
     pub const fn none() -> Device {
         Device {
-            name:   "",
-            probe:  None,
-            read:   None,
-            write:  None,
-            ioctl:  None,
-            map:    None,
-            mux:    None,
-            getbs:  None,
-            fops:   FileOps::none(),
+            name:  "",
+            probe: None,
+            read:  None,
+            write: None,
+            ioctl: None,
+            map:   None,
+            fops:  FileOps::none(),
+            mux:   None,
+            getbs: None,
         }
     }
 }
@@ -66,9 +67,9 @@ pub macro devid_minor {
 pub macro vnode_dev {
     ($vnode:expr) => {
         DeviceDescriptor {
-            devtype: (*$vnode).mode & S_IFMT,
-            major: devid_major!((*$vnode).rdev),
-            minor: devid_minor!((*$vnode).rdev),
+            devtype: (*$vnode).mode() & S_IFMT,
+            major: devid_major!((*$vnode).rdev()),
+            minor: devid_minor!((*$vnode).rdev()),
         }
     }
 }

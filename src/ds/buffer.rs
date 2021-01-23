@@ -23,6 +23,14 @@ impl Buffer {
     pub fn alloc(val: Buffer) -> Box<Self> {
         Box::new_tagged(&M_BUFFER, val)
     }
+    
+    pub fn as_ptr(&self) -> *const u8 {
+        self.data
+    }
+
+    pub fn as_ptr_mut(&mut self) -> *mut u8 {
+        self.data
+    }
 
     pub fn size(&self) -> usize {
         self.size

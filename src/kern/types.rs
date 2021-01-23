@@ -31,6 +31,15 @@ pub struct TimeSpec {
     pub tv_nsec: u32,
 }
 
+impl TimeSpec {
+    pub const fn none() -> Self {
+        TimeSpec {
+            tv_sec: 0,
+            tv_nsec: 0,
+        }
+    }
+}
+
 #[repr(C)]
 pub struct TimeVal {
     pub tv_sec: time_t,         /* seconds */

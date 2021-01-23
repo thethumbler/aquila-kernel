@@ -63,9 +63,9 @@ unsafe fn cmos_time(rtc: *mut CmosRtc) -> isize {
 }
 
 /* FIXME: should be elsewhere */
-pub unsafe fn arch_time_get(ts: *mut TimeSpec) -> isize {
-    let mut rtc: CmosRtc = core::mem::uninitialized();
-    cmos_time(&mut rtc);
+pub fn gettime() -> Result<TimeSpec, Error> {
+    let mut rtc: CmosRtc = unsafe { core::mem::uninitialized() };
+    unsafe { cmos_time(&mut rtc) };
 
     let mut time: time_t = 0;
 
@@ -87,10 +87,10 @@ pub unsafe fn arch_time_get(ts: *mut TimeSpec) -> isize {
     /* add hours, minutes and seconds */
     time += (3600 * hrs) + (60 * min) + sec;
 
-    (*ts).tv_sec = time;
-    (*ts).tv_nsec = 0;
-
-    return 0;
+    Ok(TimeSpec {
+        tv_sec: time,
+        tv_nsec: 0,
+    })
 }
 
 pub unsafe fn x86_cmos_setup(ioaddr: *mut IOAddr) -> isize {
