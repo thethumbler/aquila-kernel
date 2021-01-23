@@ -46,7 +46,7 @@ pub unsafe fn sched_init_spawn(init: *mut Process) {
 
     /* init defaults */
     (*init).mask = 0775;
-    (*init).cwd = strdup(b"/".as_ptr());
+    (*init).cwd = "/".to_owned();
 
     arch_sched_init();
 

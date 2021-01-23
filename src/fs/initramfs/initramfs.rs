@@ -2,57 +2,45 @@ use prelude::*;
 
 use dev::*;
 use dev::rd::ramdisk::RD_SIZE;
-use fs::*;
+use fs::{self, *};
 use fs::devfs::*;
 use kern::string::*;
 use mm::*;
 
 malloc_declare!(M_VNODE);
 
-static mut RD_DEV: *mut Vnode = core::ptr::null_mut();
-static mut ARCHIVERS: Queue<*mut Filesystem> = Queue::empty();
+static mut ARCHIVERS: Vec<&'static mut Filesystem> = Vec::new();
 
-pub unsafe fn initramfs_archiver_register(fs: *mut Filesystem) -> isize {
-    if ARCHIVERS.enqueue(fs).is_null() {
-        return -ENOMEM;
+pub fn archiver_register(fs: &'static mut Filesystem) -> Result<(), Error> {
+    unsafe {
+        print!("initramfs: registered archiver: {}\n", fs.name);
+        ARCHIVERS.push(fs);
+        Ok(())
     }
-
-    print!("initramfs: registered archiver: {}\n", (*fs).name);
-
-    return 0;
 }
 
-pub unsafe fn load_ramdisk(_: *mut u8) -> isize {
-    print!("kernel: loading ramdisk\n");
+pub fn load_ramdisk(_: *mut u8) -> Result<(), Error> {
+    unsafe {
+        print!("kernel: loading ramdisk\n");
 
-    RD_DEV = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
+        if let Some(devfs) = fs::get_fs_by_name("devfs") {
+            let mut rd_dev = Node::none();
 
-    if RD_DEV.is_null() {
-        return -ENOMEM;
-    }
+            rd_dev.set_mode(S_IFBLK);
+            rd_dev.set_size(RD_SIZE);
+            rd_dev.rdev = devid!(1, 0);
+            rd_dev.fs   = Some(devfs);
 
-    (*RD_DEV).mode = S_IFBLK;
-    (*RD_DEV).rdev = devid!(1, 0);
-    (*RD_DEV).size = RD_SIZE;
-    (*RD_DEV).fs   = &DEVFS;
+            let rd_dev = Arc::new(rd_dev);
 
-    let mut root: *mut Vnode = core::ptr::null_mut();
-    let mut err = -1;
-
-    for node in ARCHIVERS.iter() {
-        let fs = (*node).value;
-        err = (*fs).load(RD_DEV, &mut root);
-
-        if err == 0 {
-            break;
+            for ar in ARCHIVERS.iter() {
+                if let Ok(root) = ar.load(Arc::clone(&rd_dev)) {
+                    return fs::bind("/", root);
+                }
+            }
         }
-    }
 
-    if err != 0{
-        print!("error code = {}\n", err);
         panic!("could not load ramdisk\n");
     }
-
-    return vfs_mount_root(root);
 }
 

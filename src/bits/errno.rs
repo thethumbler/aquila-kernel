@@ -2,6 +2,7 @@ use prelude::*;
 use core::ops::Neg;
 
 #[repr(isize)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     EPERM           = 1,
     ENOENT          = 2,
@@ -140,6 +141,18 @@ impl Error {
     pub const EWOULDBLOCK:  Error = Error::EAGAIN;
     pub const EDEADLOCK:    Error = Error::EDEADLK;
     pub const ENOTSUP:      Error = Error::EOPNOTSUPP;
+
+    pub fn unwrap(self) -> isize {
+        -self
+    }
+
+    pub fn wrap_isize_to_usize(val: isize) -> Result<usize, Error> {
+        if val < 0 {
+            return Err(unsafe { core::mem::transmute(-val) });
+        }
+
+        return Ok(val as usize);
+    }
 }
 
 impl Neg for Error {

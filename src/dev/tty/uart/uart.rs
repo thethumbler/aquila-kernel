@@ -8,6 +8,7 @@ use fs::posix::*;
 use sys::process::*;
 use sys::sched::*;
 use sys::thread::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 
 #[repr(C)]
 pub struct Uart {
@@ -19,7 +20,7 @@ pub struct Uart {
     pub tty: *mut Tty,
 
     /* vnode associated with uart device */
-    pub vnode: *mut Vnode,
+    pub vnode: *mut Node,
 
     pub init:     Option<unsafe fn(u: *mut Uart)>,
     pub transmit: Option<unsafe fn(u: *mut Uart, c: u8) -> isize>,
@@ -102,7 +103,7 @@ pub unsafe fn uart_ioctl(dd: *mut DeviceDescriptor, request: usize, argp: *mut u
 }
 
 pub unsafe fn uart_file_open(file: *mut FileDescriptor) -> isize {
-    let id = (*(*file).backend.vnode).rdev & 0xFF - 64;
+    let id = (*(*file).backend.vnode).rdev() & 0xFF - 64;
     let u = DEVICES[id as usize];
     let mut err = 0;
 
@@ -159,9 +160,6 @@ pub static mut uart: Device = Device {
 
     fops: FileOps {
         _open:  Some(uart_file_open),
-        _read:  Some(posix_file_read),
-        _write: Some(posix_file_write),
-        _ioctl: Some(posix_file_ioctl),
 
         _can_write: Some(__vfs_can_always),  /* XXX */
         _eof: Some(__vfs_eof_never),

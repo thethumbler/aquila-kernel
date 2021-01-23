@@ -1,5 +1,5 @@
 use prelude::*;
-use fs::*;
+use fs::{self, *};
 use mm::*;
 
 use crate::{page_align};
@@ -12,7 +12,7 @@ use crate::{page_align};
 //}
 
 /** create a new `vm_object` associated with a `vnode` */
-pub unsafe fn vm_object_vnode(vnode: *mut Vnode) -> *mut VmObject {
+pub unsafe fn vm_object_vnode(vnode: *mut Node) -> *mut VmObject {
     if vnode.is_null() {
         return core::ptr::null_mut();
     }
@@ -29,7 +29,7 @@ pub unsafe fn vm_object_vnode(vnode: *mut Vnode) -> *mut VmObject {
         (*vm_object).pages = Box::leak(HashMap::alloc(HashMap::new(0)));
 
         if (*vm_object).pages.is_null() {
-            kfree(vm_object as *mut u8);
+            //kfree(vm_object as *mut u8);
             return core::ptr::null_mut();
         }
 
@@ -61,10 +61,10 @@ pub unsafe fn vnode_page_in(vm_object: *mut VmObject, off: off_t) -> *mut VmPage
     (*vm_page).off = page_align!(off) as off_t;
     (*vm_page).refcnt = 1;
 
-    let vnode = (*vm_object).p as *mut Vnode;
+    let vnode = (*vm_object).p as *mut Node;
 
     mm_page_map(kvm_space.pmap, &__LOAD as *const _ as usize, (*vm_page).paddr, VM_KW as isize);
-    vfs_read(vnode, (*vm_page).off, PAGE_SIZE, &__LOAD.page as *const _ as *mut u8);
+    (*vnode).read((*vm_page).off as usize, PAGE_SIZE, &__LOAD.page as *const _ as *mut u8);
 
     (*vm_object).insert(vm_page);
 

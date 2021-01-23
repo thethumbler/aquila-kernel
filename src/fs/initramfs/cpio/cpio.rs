@@ -1,442 +1,318 @@
 use prelude::*;
 
 use bits::dirent::*;
-use fs::*;
-use fs::initramfs::*;
+use fs::{self, *};
+use fs::initramfs;
 use fs::posix::*;
 use fs::rofs::*;
 use kern::time::*;
 use mm::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
+use alloc::collections::btree_map::BTreeMap;
 
 malloc_declare!(M_VNODE);
 
 const CPIO_BIN_MAGIC: u16 = 0o070707;
 
 #[repr(C)]
+#[derive(Default)]
 struct CpioHeader {
-    pub magic:    u16,
-    pub dev:      u16,
-    pub ino:      u16,
-    pub mode:     u16,
-    pub uid:      u16,
-    pub gid:      u16,
-    pub nlink:    u16,
-    pub rdev:     u16,
-    pub mtime:    [u16; 2],
-    pub namesize: u16,
-    pub filesize: [u16; 2],
+    magic:    u16,
+    dev:      u16,
+    ino:      u16,
+    mode:     u16,
+    uid:      u16,
+    gid:      u16,
+    nlink:    u16,
+    rdev:     u16,
+    mtime:    [u16; 2],
+    namesize: u16,
+    filesize: [u16; 2],
+}
+
+impl CpioHeader {
+    fn filesize(&self) -> usize {
+        self.filesize[0] as usize * 0x10000 + self.filesize[1] as usize
+    }
+
+    fn namesize(&self) -> usize {
+        self.namesize as usize
+    }
 }
 
 struct Cpio {
-    pub super_node: *mut Vnode,
-    pub parent: *mut Vnode,
-    pub dir: *mut Vnode,
-
-    pub count: usize,
+    dev: Arc<Node>,
+    dir: Option<BTreeMap<String, Arc<Node>>>,
 
     /* offset of data in the archive */
-    pub data: usize,
-
-    pub name: *const u8,
-
-    /* for directories */
-    pub next: *mut Vnode,
+    data: usize,
 }
 
 malloc_define!(M_CPIO, "cpio\0", "CPIO structure\0");
 
-unsafe fn cpio_root_node(super_node: *mut Vnode, vnode_ref: *mut *mut Vnode) -> isize {
-    let mut err = 0;
+fn root_node(dev: Arc<Node>) -> Result<Arc<Node>, Error> {
+    let mut node = Node::none();
 
-    let vnode: *mut Vnode = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
+    //node.ino = &*node as *const _ as ino_t;
+    node.set_size(0);
+    node.set_mode(S_IFDIR | 0o775);
+    node.set_uid(0);
+    node.set_gid(0);
+    node.set_nlink(2);
+    node.refcnt = 1;
 
-    if vnode.is_null() {
-        err = -ENOMEM;
-        panic!("todo");
-    }
+    let ts = gettime().unwrap();
 
-    let p: *mut Cpio = kmalloc(core::mem::size_of::<Cpio>(), &M_CPIO, 0) as *mut Cpio;
-    if p.is_null() {
-        err = -ENOMEM;
-        panic!("todo");
-    }
+    node.ctime = ts;
+    node.atime = ts;
+    node.mtime = ts;
 
-    (*vnode).ino    = vnode as ino_t;
-    (*vnode).size   = 0;
-    (*vnode).mode   = S_IFDIR | 0775;
-    (*vnode).uid    = 0;
-    (*vnode).gid    = 0;
-    (*vnode).nlink  = 2;
-    (*vnode).refcnt = 1;
+    node.fs = unsafe { CPIOFS_ARC_OPT.clone() };
 
-    let mut ts: TimeSpec = core::mem::uninitialized();
-    gettime(&mut ts);
+    let data = Box::new(Cpio {
+        dev  : dev,
+        dir  : None,
+        data : 0,
+    });
 
-    (*vnode).ctime = ts;
-    (*vnode).atime = ts;
-    (*vnode).mtime = ts;
+    node.set_data(Box::leak(data));
 
-    (*vnode).fs    = &CPIOFS;
-    (*vnode).p     = p as *mut u8;
-
-    (*p).super_node = super_node;
-    (*p).parent     = core::ptr::null_mut();
-    (*p).dir        = core::ptr::null_mut();
-    (*p).count      = 0;
-    (*p).data       = 0;
-    (*p).next       = core::ptr::null_mut();
-
-    if !vnode_ref.is_null() {
-        *vnode_ref = vnode;
-    }
-
-    return 0;
+    Ok(Arc::new(node))
 }
 
-unsafe fn cpio_new_node(name: *const u8, hdr: *mut CpioHeader, sz: usize, data: usize, sp: *mut Vnode, vnode_ref: *mut *mut Vnode) -> isize {
-    let mut err = 0;
+fn new_node(dev: Arc<Node>, name: &str, hdr: &CpioHeader, sz: usize, content: usize) -> Result<Arc<Node>, Error> {
+    let mut node = Node::none();
 
-    let vnode: *mut Vnode = kmalloc(core::mem::size_of::<Vnode>(), &M_VNODE, M_ZERO) as *mut Vnode;
+    node.set_size(sz);
+    node.set_uid(0);
+    node.set_gid(0);
+    node.set_mode(hdr.mode as u32);
+    node.set_nlink(hdr.nlink as u32);
+    node.mtime = TimeSpec { tv_sec: hdr.mtime[0] as u64 * 0x10000 + hdr.mtime[1] as u64, tv_nsec: 0 };
+    node.rdev  = hdr.rdev;
 
-    if vnode.is_null() {
-        err = -ENOMEM;
-        panic!("todo");
-    }
+    node.fs = unsafe { CPIOFS_ARC_OPT.clone() };
 
-    let p: *mut Cpio = kmalloc(core::mem::size_of::<Cpio>(), &M_CPIO, 0) as *mut Cpio;
-    if p.is_null() {
-        err = -ENOMEM;
-        panic!("todo");
-    }
+    let data = Box::new(Cpio {
+        dev: dev,
+        dir: None,
+        data: content,
+    });
 
-    (*vnode).ino   = vnode as vino_t;
-    (*vnode).size  = sz;
-    (*vnode).uid   = 0;
-    (*vnode).gid   = 0;
-    (*vnode).mode  = (*hdr).mode as u32;
-    (*vnode).nlink = (*hdr).nlink as u32;
-    (*vnode).mtime = TimeSpec { tv_sec: (*hdr).mtime[0] as u64 * 0x10000 + (*hdr).mtime[1] as u64, tv_nsec: 0 };
-    (*vnode).rdev  = (*hdr).rdev;
+    node.set_data(Box::leak(data));
 
-    (*vnode).fs   = &CPIOFS;
-    (*vnode).p    = p as *mut u8;
-
-    (*p).super_node  = sp;
-    (*p).parent = core::ptr::null_mut();
-    (*p).dir    = core::ptr::null_mut();
-    (*p).count  = 0;
-    (*p).data   = data;
-    (*p).next   = core::ptr::null_mut();
-    (*p).name   = strdup(name);
-
-    if !vnode_ref.is_null() {
-        *vnode_ref = vnode;
-    }
-
-    return 0;
+    Ok(Arc::new(node))
 }
 
-unsafe fn cpio_new_child_node(parent: *mut Vnode, child: *mut Vnode) -> *mut Vnode {
-    if parent.is_null() || child.is_null() {
-        /* invalid vnode */
-        return core::ptr::null_mut();
-    }
-
-    if !S_ISDIR!((*parent).mode) {
+fn new_child_node(parent: &Node, name: &str, child: Arc<Node>) -> Result<(), Error> {
+    if !parent.is_directory() {
         /* adding child to non directory parent */
-        return core::ptr::null_mut();
+        return Err(Error::ENOTDIR);
     }
 
-    let pp = (*parent).p as *mut Cpio;
-    let cp = (*child).p as *mut Cpio;
+    let parent_data = parent.data::<Cpio>().unwrap();
 
-    let tmp = (*pp).dir;
+    if let None = parent_data.dir {
+        parent_data.dir = Some(BTreeMap::new());
+    }
 
-    (*cp).next = tmp;
-    (*pp).dir = child;
+    parent_data.dir.as_mut().unwrap()
+        .insert(name.to_owned(), child);
 
-    (*pp).count += 1;
-    (*cp).parent = parent;
-
-    return child;
+    Ok(())
 }
 
-unsafe fn cpio_find(root: *mut Vnode, path: *const u8) -> *mut Vnode {
-    let tokens: *mut *mut u8 = tokenize(path, b'/');
+fn cpio_find(root: Arc<Node>, path: &str) -> Option<Arc<Node>> {
+    let path = fs::realpath(path, &UserOp::default()).unwrap();
 
-    if !S_ISDIR!((*root).mode) {
+    if !root.is_directory() {
         /* not even a directory */
-        return core::ptr::null_mut();
+        return None;
     }
 
-    let mut cur = root;
-    let mut dir = (*((*cur).p as *mut Cpio)).dir;
+    let mut cur = Arc::clone(&root);
 
-    if dir.is_null() {
+    if cur.data::<Cpio>().unwrap().dir.as_ref().is_none() {
         /* directory has no children */
-        if (*tokens).is_null() {
-            return root;
+        if path.is_empty() || path == "/" {
+            return Some(Arc::clone(&root));
         } else {
-            return core::ptr::null_mut();
+            return None;
         }
     }
 
-    let mut token_p = tokens;
-
-    while !(*token_p).is_null() {
-        let token = *token_p;
-
-        let mut flag = false;
-
-        let mut node = dir; 
-
-        while !node.is_null() {
-            let cpio = (*node).p as *mut Cpio;
-
-            if !(*cpio).name.is_null() && strcmp((*cpio).name, token) == 0 {
-                cur = node;
-                dir = (*cpio).dir;
-                flag = true;
-                break;
-            }
-
-            node = (*cpio).next;
+    for token in path.split("/") {
+        if token.is_empty() {
+            continue;
         }
 
-        if !flag {
-            /* no such file or directory */
-            return core::ptr::null_mut();
-        }
+        let cpio = cur.data::<Cpio>().unwrap();
 
-        token_p = token_p.offset(1);
+        if let Some(node) = cpio.dir.as_ref().unwrap().get(token) {
+            cur = Arc::clone(node);
+        } else {
+            return None;
+        }
     }
 
-    free_tokens(tokens);
-    return cur;
+    Some(cur)
 }
 
-unsafe fn cpio_finddir(root: *mut Vnode, name: *const u8, dirent: *mut DirectoryEntry) -> isize {
-
-    if !S_ISDIR!((*root).mode) {
+fn finddir(root: &Node, name: &str) -> Result<DirectoryEntry, Error> {
+    if !root.is_directory() {
         /* not even a directory */
-        return -ENOTDIR;
+        return Err(Error::ENOTDIR);
     }
 
-    let dir = (*((*root).p as *mut Cpio)).dir;
-
-    if dir.is_null() {
-        /* directory has no children */
-        return -ENOENT;
-    }
-
-    let mut node = dir;
-    while !node.is_null() {
-        let cpio = (*node).p as *mut Cpio;
-
-        if !(*cpio).name.is_null() && strcmp((*cpio).name, name) == 0 {
-            if !dirent.is_null() {
-                (*dirent).d_ino = node as ino_t;
-                strcpy((*dirent).d_name.as_mut_ptr(), name);
-            }
-
-            return 0;
-        }
-
-        node = (*cpio).next;
-    }
-
-    return -ENOENT;
+    root.data::<Cpio>().map(|cpio|
+        cpio.dir.as_ref().map(|dir| {
+            dir.get(name)
+                // FIXME: do not use pointers as inode numbers
+                .map(|node| Ok(DirectoryEntry::new(&**node as *const _ as ino_t, name)))
+                .unwrap_or(Err(Error::ENOENT))
+        }).unwrap_or(Err(Error::ENOENT))
+    ).unwrap_or(Err(Error::ENOENT))
 }
 
-unsafe fn cpio_vget(super_node: *mut Vnode, ino: ino_t, vnode_ref: *mut *mut Vnode) -> isize {
-    *vnode_ref = ino as *mut Vnode;
-    return 0;
+fn iget(_superblock: &mut Node, ino: ino_t) -> Result<&'static mut Node, Error> {
+    unsafe {
+        let node = ino as *mut Node;
+        Ok(&mut *node)
+    }
 }
 
 const MAX_NAMESIZE: usize = 1024;
 
-unsafe fn cpio_load(dev: *mut Vnode, super_node_ref: *mut *mut Vnode) -> isize {
+fn load(dev: Arc<Node>) -> Result<Arc<Node>, Error> {
+    unsafe {
+        if CPIOFS_ARC_OPT.is_none() {
+            CPIOFS_ARC_OPT = Some(Arc::new(CPIOFS.clone()))
+        }
+    }
+
     /* allocate the root node */
-    let mut rootfs: *mut Vnode = core::ptr::null_mut();
-    cpio_root_node(dev, &mut rootfs);
+    let rootfs = root_node(Arc::clone(&dev))?;
 
-    let mut hdr: CpioHeader = core::mem::zeroed();
+    let mut hdr = CpioHeader::default();
     let mut offset = 0;
-    let mut size = 0;
 
-    while offset < (*dev).size {
+    while offset < dev.size() {
         let mut data_offset = offset;
-        vfs_read(dev, data_offset as isize, core::mem::size_of::<CpioHeader>(), &mut hdr as *const _ as *mut u8);
+        dev.read(data_offset, core::mem::size_of_val(&hdr), &hdr as *const _ as *mut u8)?;
 
         if hdr.magic != CPIO_BIN_MAGIC {
-            panic!("invalid cpio archive\n");
+            panic!("invalid cpio archive");
         }
 
-        size = hdr.filesize[0] as usize * 0x10000 + hdr.filesize[1] as usize;
+        let size = hdr.filesize();
         
         data_offset += core::mem::size_of::<CpioHeader>();
         
         let mut path = [0u8; MAX_NAMESIZE];
-        vfs_read(dev, data_offset as isize, hdr.namesize as usize, path.as_mut_ptr());
+        dev.read(data_offset, 1024, &path as *const _ as *mut u8)?;
 
-        if strcmp(path.as_ptr(), b".\0".as_ptr()) == 0 {
-            offset += (core::mem::size_of::<CpioHeader>() + ((hdr.namesize as usize + 1)/2*2 + (size+1)/2*2) as usize);
-            continue;
-        }
+        let path = cstr(path.as_ptr());
 
-        if strcmp(path.as_ptr(), b"TRAILER!!!\0".as_ptr()) == 0 {
+        match path {
             /* end of archive */
-            break;
-        }
+            "TRAILER!!!" => break,
+            "." => {
+                offset += (core::mem::size_of::<CpioHeader>() + ((hdr.namesize() + 1)/2*2 + (size+1)/2*2) as usize);
+                continue;
+            },
+            path => {
+                let (dir, name) = path.rsplit_once("/").unwrap_or(("", path));
+                data_offset += hdr.namesize() + hdr.namesize() % 2;
+                let node = new_node(Arc::clone(&dev), name, &mut hdr, size, data_offset).unwrap();
 
-        let mut dir  = core::ptr::null();
-        let mut name = core::ptr::null();
+                let parent = cpio_find(Arc::clone(&rootfs), dir).unwrap();
+                new_child_node(&*parent, name, node);
 
-        /* TODO implement strrchr */
-        for i in (0..hdr.namesize as usize).rev() {
-            if path[i] == b'/' {
-                path[i] = b'\0';
-                name = path.as_ptr().offset((i+1) as isize);
-                dir  = path.as_ptr();
-                break;
+                offset += (core::mem::size_of::<CpioHeader>() + ((hdr.namesize() + 1)/2*2 + (size+1)/2*2) as usize);
             }
         }
-
-        if name.is_null() {
-            name = path.as_ptr();
-            dir  = b"/\0".as_ptr();
-        }
-        
-        data_offset += (hdr.namesize + (hdr.namesize % 2)) as usize;
-
-        let mut _node = core::ptr::null_mut(); 
-        cpio_new_node(strdup(name), &mut hdr, size, data_offset, dev, &mut _node);
-
-        let parent = cpio_find(rootfs, dir);
-        cpio_new_child_node(parent, _node);
-
-        offset += (core::mem::size_of::<CpioHeader>() + ((hdr.namesize as usize + 1)/2*2 + (size+1)/2*2) as usize);
     }
 
-    if !super_node_ref.is_null() {
-        *super_node_ref = rootfs;
-    }
-
-    return 0;
+    Ok(rootfs)
 }
 
-unsafe fn cpio_read(vnode: *mut Vnode, offset: isize, len: usize, buf: *mut u8) -> usize {
-    if (offset as usize) >= (*vnode).size {
-        return 0;
+fn read(node: &Node, offset: usize, size: usize, buffer: *mut u8) -> Result<usize, Error> {
+    if offset >= node.size() {
+        return Ok(0);
     }
 
-    let mut len = if len < (*vnode).size - offset as usize { len } else { (*vnode).size - offset as usize };
-    let p = (*vnode).p as *mut Cpio;
-    let super_node = (*p).super_node;
+    let mut len = if size < node.size() - offset { size } else { node.size() - offset };
+    let data = node.data::<Cpio>().unwrap();
 
-    return vfs_read(super_node, ((*p).data + offset as usize) as isize, len, buf) as usize;
+    data.dev.read(data.data + offset, len, buffer)
 }
 
-unsafe fn cpio_readdir(node: *mut Vnode, offset: isize, dirent: *mut DirectoryEntry) -> usize {
-    let mut offset = offset;
-
-    if offset == 0 {
-        strcpy((*dirent).d_name.as_mut_ptr(), b".\0".as_ptr());
-        return 1;
+fn readdir(node: &Node, offset: usize) -> Result<(usize, DirectoryEntry), Error> {
+    match offset {
+        0 => Ok((1, DirectoryEntry::new(0, "."))),
+        1 => Ok((1, DirectoryEntry::new(0, ".."))),
+        offset => node.data::<Cpio>().map(|cpio| {
+            cpio.dir.as_ref().map(|dir| {
+                dir.iter().nth(offset-2).map(|(name, node)| {
+                    Ok((1, DirectoryEntry::new((**node).ino, name)))
+                }).unwrap_or(Ok((0, DirectoryEntry::none())))
+            }).unwrap_or(Ok((0, DirectoryEntry::none())))
+        }).unwrap_or(Ok((0, DirectoryEntry::none())))
     }
-
-    if offset == 1 {
-        strcpy((*dirent).d_name.as_mut_ptr(), b"..\0".as_ptr());
-        return 1;
-    }
-
-    offset -= 2;
-
-    let p = (*node).p as *mut Cpio;
-
-    if (offset as usize) == (*p).count {
-        return 0;
-    }
-
-    let mut i = 0;
-    let dir = (*p).dir;
-
-    let mut node = dir; 
-    while !node.is_null() {
-        let cpio = (*node).p as *mut Cpio;
-
-        if i == offset {
-            (*dirent).d_ino = node as ino_t;
-            strcpy((*dirent).d_name.as_mut_ptr(), (*cpio).name);   // FIXME
-            break;
-        }
-
-        i += 1;
-        node = (*cpio).next;
-    }
-
-    return (i == offset) as usize;
 }
 
-unsafe fn cpio_close(_vnode: *mut Vnode) -> isize {
-    return 0;
+fn close(_node: &Node) -> Result<usize, Error> {
+    return Ok(0);
 }
 
 unsafe fn cpio_eof(file: *mut FileDescriptor) -> isize {
-    if S_ISDIR!((*(*file).backend.vnode).mode) {
-        let cpio = (*(*file).backend.vnode).p as *mut Cpio;
-        return ((*file).offset >= (*cpio).count as isize) as isize;
+    if (*(*file).backend.vnode).is_directory() {
+        let cpio = (*(*file).backend.vnode).data::<Cpio>().unwrap();
+        return ((*file).offset >= cpio.dir.as_ref().map(|e| e.len()).unwrap_or(0) as isize) as isize;
     } else {
-        return ((*file).offset >= (*(*file).backend.vnode).size as isize) as isize;
+        return ((*file).offset >= (*(*file).backend.vnode).size() as isize) as isize;
     }
 }
 
-unsafe fn cpio_init() -> isize {
-    return initramfs_archiver_register(&mut CPIOFS);
+fn init() -> Result<(), Error> {
+    unsafe {
+        initramfs::archiver_register(&mut CPIOFS)
+    }
 }
 
 static mut CPIOFS: Filesystem = Filesystem {
     name: "cpio",
     nodev: 0,
-    _load: Some(cpio_load),
-    _init: None,
-    _mount: None,
+    load: Some(load),
 
-    vops: VnodeOps {
-        _read:     Some(cpio_read),
-        _readdir:  Some(cpio_readdir),
-        _finddir:  Some(cpio_finddir),
-        _vget:     Some(cpio_vget),
-        _close:    Some(cpio_close),
+    read:     Some(read),
+    readdir:  Some(readdir),
+    finddir:  Some(finddir),
+    iget:     Some(iget),
+    close:    Some(close),
 
-        _write:    Some(rofs_write),
-        _trunc:    Some(rofs_trunc),
-        _vmknod:   Some(rofs_vmknod),
-        _vunlink:  Some(rofs_vunlink),
-
-        _chmod:    None,
-        _chown:    None,
-        _ioctl:    None,
-        _map:      None,
-        _sync:     None,
-        _vsync:    None,
-    },
+    write:    Some(rofs::write),
+    trunc:    Some(rofs::trunc),
+    mknod:    Some(rofs::mknod),
+    unlink:   Some(rofs::unlink),
     
     fops: FileOps {
         _open:     Some(posix_file_open),
-        _close:    Some(posix_file_close),
-        _read:     Some(posix_file_read),
-        _write:    Some(posix_file_write),
-        _readdir:  Some(posix_file_readdir),
-        _lseek:    Some(posix_file_lseek),
+        //_close:    Some(posix_file_close),
 
         _eof:      Some(cpio_eof),
 
-        _can_read:  None,
-        _can_write: None,
-        _ioctl:     None,
-        _trunc:     None,
+        ..FileOps::none()
     },
+
+    ..Filesystem::none()
 };
 
-module_init!(initramfs_cpio, Some(cpio_init), None);
+static mut CPIOFS_ARC_OPT: Option<Arc<Filesystem>> = None;
+
+module_define!{
+    "initramfs_cpio",
+    None,
+    Some(init),
+    None
+}

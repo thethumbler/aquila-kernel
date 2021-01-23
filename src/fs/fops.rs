@@ -8,16 +8,12 @@ use dev::dev::*;
 use dev::kdev::*;
 use net::socket::*;
 
+use sys::syscall::file::{FileDescriptor, FileBackend};
+
 #[derive(Clone)]
 pub struct FileOps {
     pub _open:      Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
-    pub _read:      Option<unsafe fn(file: *mut FileDescriptor, buf: *mut u8, size: usize) -> isize>,
-    pub _write:     Option<unsafe fn(file: *mut FileDescriptor, buf: *mut u8, size: usize) -> isize>,
-    pub _readdir:   Option<unsafe fn(file: *mut FileDescriptor, dirent: *mut DirectoryEntry) -> isize>, 
-    pub _lseek:     Option<unsafe fn(file: *mut FileDescriptor, offset: off_t, whence: isize) -> off_t>,
-    pub _close:     Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
-    pub _ioctl:     Option<unsafe fn(file: *mut FileDescriptor, request: usize, argp: *mut u8) -> isize>,
-    pub _trunc:     Option<unsafe fn(file: *mut FileDescriptor, len: off_t) -> isize>,
+    //pub _close:     Option<unsafe fn(file: *mut FileDescriptor) -> isize>,
 
     /* helpers */
     pub _can_read:  Option<unsafe fn(file: *mut FileDescriptor, size: usize) -> isize>,
@@ -28,44 +24,35 @@ pub struct FileOps {
 impl FileOps {
     pub const fn none() -> FileOps {
         FileOps {
-            _open: None,
-            _read: None,
-            _write: None,
-            _readdir: None,
-            _lseek: None,
-            _close: None,
-            _ioctl: None,
-            _trunc: None,
-            _can_read: None,
+            _open:      None,
+            //_close:     None,
+            _can_read:  None,
             _can_write: None,
-            _eof: None,
+            _eof:       None,
         }
     }
 }
 
+pub fn vfs_file_open(file: &mut FileDescriptor) -> Result<usize, Error> {
+    unsafe {
+        if file.backend.vnode.is_null() || (*file.backend.vnode).fs.is_none() {
+            return Err(Error::EINVAL);
+        }
 
-/**
- * \ingroup vfs
- * \brief open a new file
- */
-pub unsafe fn vfs_file_open(file: *mut FileDescriptor) -> isize {
-    if file.is_null() || (*file).backend.vnode.is_null() || (*(*file).backend.vnode).fs.is_null() {
-        return -EINVAL;
+        if (*file.backend.vnode).is_directory() && (file.flags & O_SEARCH) == 0 {
+            return Err(Error::EISDIR);
+        }
+
+        if (*file.backend.vnode).is_device() {
+            return Error::wrap_isize_to_usize(kdev_file_open(&mut vnode_dev!(file.backend.vnode), file));
+        }
+
+        //if ((*(*(*file).backend.vnode).fs).fops.open as *const u8).is_null() {
+        //    return -ENOSYS;
+        //}
+
+        return Error::wrap_isize_to_usize(file.open());
     }
-
-    if S_ISDIR!((*(*file).backend.vnode).mode) && ((*file).flags & O_SEARCH) == 0 {
-        return -EISDIR;
-    }
-
-    if (*(*file).backend.vnode).is_device() {
-        return kdev_file_open(&mut vnode_dev!((*file).backend.vnode), file);
-    }
-
-    //if ((*(*(*file).backend.vnode).fs).fops.open as *const u8).is_null() {
-    //    return -ENOSYS;
-    //}
-
-    return (*file).open();
 }
 
 /*
@@ -81,9 +68,9 @@ pub unsafe fn vfs_file_read(file: *mut FileDescriptor, buf: *mut u8, nbytes: usi
         return -EINVAL;
     }
 
-    if (*(*file).backend.vnode).is_device() {
-        return kdev_file_read(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
-    }
+    //if (*(*file).backend.vnode).is_device() {
+    //    return kdev_file_read(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
+    //}
 
     //if (*(*file).backend.vnode).fs.is_null() {
     //    return -EINVAL;
@@ -109,9 +96,9 @@ pub unsafe fn vfs_file_write(file: *mut FileDescriptor, buf: *mut u8, nbytes: us
         return -EINVAL;
     }
 
-    if (*(*file).backend.vnode).is_device() {
-        return kdev_file_write(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
-    }
+    //if (*(*file).backend.vnode).is_device() {
+    //    return kdev_file_write(&mut vnode_dev!((*file).backend.vnode), file, buf, nbytes);
+    //}
 
     //if (*(*file).backend.vnode).fs.is_null() {
     //    return -EINVAL;
@@ -133,9 +120,9 @@ pub unsafe fn vfs_file_ioctl(file: *mut FileDescriptor, request: usize, argp: *m
         return -EINVAL;
     }
 
-    if (*(*file).backend.vnode).is_device() {
-        return kdev_file_ioctl(&mut vnode_dev!((*file).backend.vnode), file, request as isize, argp);
-    }
+    //if (*(*file).backend.vnode).is_device() {
+    //    return kdev_file_ioctl(&mut vnode_dev!((*file).backend.vnode), file, request as isize, argp);
+    //}
 
     //if (*(*file).backend.vnode).fs.is_null() {
     //    return -EINVAL;
@@ -157,9 +144,9 @@ pub unsafe fn vfs_file_lseek(file: *mut FileDescriptor, offset: off_t, whence: i
         return -EINVAL;
     }
 
-    if (*(*file).backend.vnode).is_device() {
-        return kdev_file_lseek(&mut vnode_dev!((*file).backend.vnode), file, offset, whence);
-    }
+    //if (*(*file).backend.vnode).is_device() {
+    //    return kdev_file_lseek(&mut vnode_dev!((*file).backend.vnode), file, offset, whence);
+    //}
 
     //if (*(*file).backend.vnode).fs.is_null() {
     //    return -EINVAL;
@@ -177,11 +164,11 @@ pub unsafe fn vfs_file_lseek(file: *mut FileDescriptor, offset: off_t, whence: i
  * \brief read entries from an open directory
  */
 pub unsafe fn vfs_file_readdir(file: *mut FileDescriptor, dirent: *mut DirectoryEntry) -> isize {
-    if file.is_null() || (*file).backend.vnode.is_null() || (*(*file).backend.vnode).fs.is_null() {
+    if file.is_null() || (*file).backend.vnode.is_null() || (*(*file).backend.vnode).fs.is_none() {
         return -EINVAL;
     }
 
-    if !S_ISDIR!((*(*file).backend.vnode).mode) {
+    if !(*(*file).backend.vnode).is_directory() {
         return -ENOTDIR;
     }
 

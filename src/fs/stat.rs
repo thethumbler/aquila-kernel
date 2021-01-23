@@ -3,20 +3,23 @@ use prelude::*;
 use fs::*;
 use dev::*;
 
-pub unsafe fn vfs_stat(vnode: *mut Vnode, buf: *mut Stat) -> isize {
-    (*buf).st_dev   = (*vnode).dev;
-    (*buf).st_ino   = (*vnode).ino as u16;
-    (*buf).st_mode  = (*vnode).mode;
-    (*buf).st_nlink = (*vnode).nlink as u16;
-    (*buf).st_uid   = (*vnode).uid;
-    (*buf).st_gid   = (*vnode).gid;
-    (*buf).st_rdev  = (*vnode).rdev;
-    (*buf).st_size  = (*vnode).size as u32;
-    (*buf).st_mtime = (*vnode).mtime;
-    (*buf).st_atime = (*vnode).atime;
-    (*buf).st_ctime = (*vnode).ctime;
-
-    return 0;
+pub fn stat(node: &Node) -> Result<Stat, Error> {
+    Ok(Stat {
+        st_dev   : node.dev,
+        st_ino   : node.ino as u16,
+        st_mode  : node.mode(),
+        st_nlink : node.nlink() as u16,
+        st_uid   : node.uid(),
+        st_gid   : node.gid(),
+        st_rdev  : node.rdev,
+        st_size  : node.size() as u32,
+        st_mtime : node.mtime,
+        st_atime : node.atime,
+        st_ctime : node.ctime,
+        // FIXME
+        st_blksize: 0,
+        st_blocks: 0,
+    })
 }
 
 #[repr(C)]

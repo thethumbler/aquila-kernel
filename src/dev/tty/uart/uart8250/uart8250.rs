@@ -85,11 +85,13 @@ unsafe fn uart_8250_comm_init(_u: *mut Uart) {
     IO8250.out8(UART_IER, 0x01);
 }
 
-unsafe fn uart_8250_init() -> isize {
-    //serial_init();
-    x86_irq_handler_install(UART_8250_IRQ, uart_8250_irq);
-    uart_register(0, &mut UART_8250);
-    return 0;
+fn uart_8250_init() -> Result<(), Error> {
+    unsafe {
+        //serial_init();
+        x86_irq_handler_install(UART_8250_IRQ, uart_8250_irq);
+        uart_register(0, &mut UART_8250);
+        Ok(())
+    }
 }
 
 static mut UART_8250: Uart = Uart {
@@ -103,4 +105,9 @@ static mut UART_8250: Uart = Uart {
     vnode:    core::ptr::null_mut(),
 };
 
-module_init!(uart_8250, Some(uart_8250_init), None);
+module_define!{
+    "uart_8250", 
+    None,
+    Some(uart_8250_init),
+    None
+}

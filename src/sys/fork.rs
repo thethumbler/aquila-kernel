@@ -5,6 +5,7 @@ use sys::session::*;
 use sys::pgroup::*;
 use sys::process::*;
 use sys::thread::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 use mm::*;
 use net::socket::*;
 
@@ -31,7 +32,7 @@ pub unsafe fn copy_fds(parent: *mut Process, fork: *mut Process) -> isize {
 
     for i in 0..FDS_COUNT {
         let file = (*fork).fds.offset(i as isize);
-        if !(*file).backend.vnode.is_null() && (*file).backend.vnode != (-1isize) as *mut Vnode {
+        if !(*file).backend.vnode.is_null() && (*file).backend.vnode != (-1isize) as *mut Node {
             if (*file).flags & FILE_SOCKET != 0 {
                 (*(*file).backend.socket).refcnt += 1;
             } else {
@@ -105,13 +106,7 @@ pub unsafe fn proc_fork(thread: *mut Thread, proc_ref: *mut *mut Process) -> isi
     (*fork_thread).spawned = 1;
 
     /* copy current working directory */
-    (*fork).cwd = strdup((*proc).cwd);
-    if (*fork).cwd.is_null() {
-        err = -ENOMEM;
-        //goto error;
-        //FIXME
-        return err;
-    }
+    (*fork).cwd = (*proc).cwd.clone();
 
     /* allocate new signals queue */
     (*fork).sig_queue = Some(Queue::alloc(Queue::new()));

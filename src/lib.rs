@@ -10,6 +10,8 @@
 #![feature(new_uninit)]
 #![feature(const_in_array_repeat_expressions)]
 #![feature(const_fn_fn_ptr_basics)]
+#![feature(map_first_last)]
+#![feature(str_split_once)]
 
 #![feature(const_mut_refs)]
 

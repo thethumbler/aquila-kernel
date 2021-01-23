@@ -8,11 +8,18 @@ pub use ds::*;
 pub use alloc::boxed::*;
 pub use alloc::rc::*;
 pub use alloc::vec::*;
+pub use alloc::vec;
+pub use alloc::string::*;
+pub use alloc::borrow::*;
+pub use alloc::sync::*;
+
+pub use core::sync::atomic::*;
+pub use core::sync::atomic::Ordering::*;
 
 pub use mm::kvmem::*;
 pub use kern::types::*;
 pub use kern::string::*;
-pub use kern::module::*;
+pub use kern::module::module_define;
 pub use kern::print::cstr;
 pub use crate::{print};
 
@@ -64,6 +71,6 @@ pub macro min {
 }
 
 pub trait Alloc {
-    fn alloc() -> Box<Self>;
+    //fn alloc() -> Box<Self>;
     fn alloc_tag() -> &'static MallocType;
 }

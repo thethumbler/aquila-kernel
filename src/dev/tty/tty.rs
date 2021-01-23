@@ -69,10 +69,12 @@ unsafe fn ttydev_mux(dd: *mut DeviceDescriptor) -> *mut Device {
     }
 }
 
-unsafe fn ttydev_probe() -> isize {
-    kdev_chrdev_register(4, &mut STTYDEV);
-    kdev_chrdev_register(5, &mut TTYDEV);
-    return 0;
+fn ttydev_probe() -> Result<(), Error> {
+    unsafe {
+        kdev_chrdev_register(4, &mut STTYDEV);
+        kdev_chrdev_register(5, &mut TTYDEV);
+        Ok(())
+    }
 }
 
 static mut STTYDEV: Device = Device {
@@ -89,4 +91,9 @@ static mut TTYDEV: Device = Device {
     ..Device::none()
 };
 
-module_init!(ttydev, Some(ttydev_probe), None);
+module_define!{
+    "ttydev", 
+    None,
+    Some(ttydev_probe),
+    None
+}

@@ -36,10 +36,10 @@ SECTIONS {
         *(.eh_frame*)
     }
 
-    .module.init : AT(ADDR(.module.init) - _VMA) ALIGN(0x1000) {
-        module_init = .;
-        *(.module.init)
-        module_init_end = .;
+    .module : AT(ADDR(.module) - _VMA) ALIGN(0x1000) {
+        __modules_start = .;
+        *(.module)
+        __modules_end = .;
     }
     
     .data : AT(ADDR(.data) - _VMA) ALIGN(0x1000) {

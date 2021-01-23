@@ -4,32 +4,19 @@ use fs::*;
 use dev::*;
 use dev::kdev::*;
 
-pub unsafe fn vfs_ioctl(vnode: *mut Vnode, request: usize, argp: *mut u8) -> isize {
-    //vfs_log(LOG_DEBUG, "vfs_ioctl(vnode=%p, request=%ld, argp=%p)\n", vnode, request, argp);
-
+pub fn ioctl(node: &Node, request: usize, argp: *mut u8) -> Result<usize, Error> {
     /* TODO basic ioctl handling */
 
-    /* invalid request */
-    if vnode.is_null() {
-        return -EINVAL;
+    match node.node_type() {
+        NodeType::Regular => node.fs.as_ref().unwrap().ioctl(node, request, argp),
+        NodeType::ChrDev |
+        NodeType::BlkDev => {
+            unsafe {
+                Error::wrap_isize_to_usize(kdev_ioctl(&mut vnode_dev!(node), request as isize, argp))
+            }
+        },
+        _ => Err(Error::EINVAL)
     }
-
-    /* device node */
-    if (*vnode).is_device() {
-        return kdev_ioctl(&mut vnode_dev!(vnode), request as isize, argp);
-    }
-
-    /* invalid request */
-    if (*vnode).fs.is_null() {
-        return -EINVAL;
-    }
-
-    /* operation not supported */
-    //if ((*(*vnode).fs).vops.ioctl as *mut u8).is_null() {
-    //    return -ENOSYS;
-    //}
-
-    return (*vnode).ioctl(request as isize, argp);
 }
 
 #[repr(C)]

@@ -3,6 +3,7 @@ use prelude::*;
 use dev::dev::*;
 use fs::*;
 use mm::*;
+use sys::syscall::file::{FileDescriptor, FileBackend};
 
 malloc_define!(M_KDEV_BLK, b"kdev-blk\0", b"kdev block buffer\0");
 
@@ -265,6 +266,7 @@ pub unsafe fn kdev_file_open(dd: *mut DeviceDescriptor, file: *mut FileDescripto
     return (*dev).fops._open.unwrap()(file);
 }
 
+/*
 pub unsafe fn kdev_file_read(dd: *mut DeviceDescriptor, file: *mut FileDescriptor, buf: *mut u8, size: usize) -> isize {
     let dev = kdev_get(dd);
 
@@ -306,6 +308,7 @@ pub unsafe fn kdev_file_lseek(dd: *mut DeviceDescriptor, file: *mut FileDescript
 
     return (*dev).fops._lseek.unwrap()(file, offset, whence);
 }
+*/
 
 pub unsafe fn kdev_file_close(dd: *mut DeviceDescriptor, file: *mut FileDescriptor) -> isize {
     let dev = kdev_get(dd);
@@ -314,25 +317,14 @@ pub unsafe fn kdev_file_close(dd: *mut DeviceDescriptor, file: *mut FileDescript
         return -ENXIO;
     }
 
+    return -EINVAL;
+    /*
     if (*dev).fops._close.is_none() {
         return -EINVAL;
     }
 
     return (*dev).fops._close.unwrap()(file);
-}
-
-pub unsafe fn kdev_file_ioctl(dd: *mut DeviceDescriptor, file: *mut FileDescriptor, request: isize, argp: *mut u8) -> isize {
-    let dev = kdev_get(dd);
-
-    if dev.is_null() {
-        return -ENXIO;
-    }
-
-    if (*dev).fops._ioctl.is_none() {
-        return -ENXIO;
-    }
-
-    return (*dev).fops._ioctl.unwrap()(file, request as usize, argp);
+    */
 }
 
 pub unsafe fn kdev_file_can_read(dd: *mut DeviceDescriptor, file: *mut FileDescriptor, size: usize) -> isize {
